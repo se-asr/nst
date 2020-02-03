@@ -55,7 +55,6 @@ def find_speakers(data_list):
         try:
             item['speaker_id'] = int(item['speaker_id'])
         except:
-            print("Speaker id not int", item['speaker_id'])
             continue
 
         if (item['speaker_id'] not in speaker_ids):
@@ -75,11 +74,50 @@ def distribute_speakers(speakers, train_size, dev_size, seed):
     random.shuffle(speakers)
     return (speakers[:no_train], speakers[no_train:no_train+no_dev], speakers[no_train+no_dev:])
 
+def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, data_list):
+    train = []
+    dev = []
+    test = []
+    trcount = dcount = tcount = 0
+    for item in data_list.copy():
+        if item['speaker_id'] in speakers_ids_train:
+            train.append(item)
+            trcount += 1
+        elif item['speaker_id'] in speakers_ids_dev:
+            dev.append(item)
+            dcount += 1
+        elif item['speaker_id'] in speakers_ids_test:
+            test.append(item)
+            tcount += 1
+    print(trcount, dcount, tcount)
+    return (train, dev, test)
+
+def check_distinctness(train, dev, test):
+    for item in train:
+        if item in dev or item in test:
+            print("Duplicate item!")
+            print(item)
+
 if __name__ == "__main__":
     seed = "1337"
-    train = load_train()
-    speakers = find_speakers(train)
-    train, dev, test = distribute_speakers(speakers, 0.6, 0.2, seed)
+    print("Loading data from file")
+    data_list = load_train()
+    print("Finding unique speakers")
+    speakers = find_speakers(data_list)
+    print("Distributing speakers in train, dev and test sets")
+    train_speakers, dev_speakers, test_speakers = distribute_speakers(speakers, 0.6, 0.2, seed)
 
+    print("Checking speaker distinctness")
+    check_distinctness(train_speakers, dev_speakers, test_speakers)
+    # Get ids for each speaker
+    train_ids = [item['speaker_id'] for item in train_speakers]
+    dev_ids = [item['speaker_id'] for item in dev_speakers]
+    test_ids = [item['speaker_id'] for item in test_speakers]
+
+    print("Distributing items according to speaker distribution")
+    train, dev, test = distribute_items(train_ids, dev_ids, test_ids, data_list)
+    
+    # print("Checking distinctness")
+    # check_distinctness(train, dev, test)
     
     
