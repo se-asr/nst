@@ -1,0 +1,4 @@
+Exception when checking: Command '['soxi', '-c', './train/Stasjon3/280799/adb_0467/speech/scr0467/03/04670303/r4670265/u0265070.wav']' returned non-zero exit status 1.
+Not Mono: ./train/Stasjon3/280799/adb_0467/speech/scr0467/03/04670303/r4670265/u0265070.wav
+Exception when checking: Command '['soxi', '-c', './train/Stasjon6/060799/adb_0467/speech/scr0467/06/04670605/r4670479/u0479151.wav']' returned non-zero exit status 1.
+Not Mono: ./train/Stasjon6/060799/adb_0467/speech/scr0467/06/04670605/r4670479/u0479151.wav
