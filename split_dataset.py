@@ -21,12 +21,14 @@ def _load_data(file_name):
             row = line.split(",")
             data = {
                 'wav_file_name': row[0].strip(),
-                'speaker_id': row[1].strip(),
-                'age': row[2].strip(),
-                'sex': row[3].strip(),
-                'region_of_birth': row[4].strip(),
-                'region_of_youth': row[5].strip(),
-                'text': ', '.join(row[6:]).strip()
+                'duration': row[1].strip(),
+                'file_size': row[2].strip(),
+                'speaker_id': row[3].strip(),
+                'age': row[4].strip(),
+                'sex': row[5].strip(),
+                'region_of_birth': row[6].strip(),
+                'region_of_youth': row[7].strip(),
+                'text': ', '.join(row[8:]).strip()
             }
             all_data.append(data)
     return all_data
