@@ -1,2 +1,5 @@
 train/*
 test/*
+
+all-train.csv
+all-test.csv
