@@ -21,8 +21,8 @@ def _load_data(file_name):
             row = line.split(",")
             data = {
                 'wav_file_name': row[0].strip(),
-                'duration': row[1].strip(),
-                'file_size': row[2].strip(),
+                'duration': float(row[1].strip()),
+                'file_size': float(row[2].strip()),
                 'speaker_id': row[3].strip(),
                 'age': row[4].strip(),
                 'sex': row[5].strip(),
@@ -100,6 +100,31 @@ def check_distinctness(train, dev, test):
             print("Duplicate item!")
             print(item)
 
+def check_balance(train, dev, test):
+    metrics = ['age', 'sex', 'region_of_youth'] #Metrics with multiple answers
+    integer_metrics = ['duration', 'file_size']   #Metrics with an integer value
+    print(get_stats(train, metrics, integer_metrics))
+    print(get_stats(dev, metrics, integer_metrics))
+    print(get_stats(test, metrics, integer_metrics))
+
+
+def get_stats(dataset, metrics, integer_metrics):
+    stats = dict()
+    for stat in metrics:
+        stats[stat] = dict()
+    for stat in integer_metrics:
+        stats[stat] = 0
+    for item in dataset:
+        for metric in metrics:
+            try:
+                stats[metric][item[metric]] += 1
+            except:
+                stats[metric][item[metric]] = 1
+
+        for metric in integer_metrics:
+            stats[metric] += item[metric]
+    return stats
+
 if __name__ == "__main__":
     seed = "1337"
     print("Loading data from file")
@@ -119,6 +144,8 @@ if __name__ == "__main__":
     print("Distributing items according to speaker distribution")
     train, dev, test = distribute_items(train_ids, dev_ids, test_ids, data_list)
     
+    print("Checking balance")
+    check_balance(train, dev, test)
     # print("Checking distinctness")
     # check_distinctness(train, dev, test)
     
