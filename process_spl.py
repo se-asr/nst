@@ -1,5 +1,14 @@
 import glob
 import os.path
+import subprocess
+
+
+BAD_FILES = [
+    './train/Stasjon3/280799/adb_0467/speech/scr0467/03/04670303/r4670265/u0265070.wav',
+    './train/Stasjon6/060799/adb_0467/speech/scr0467/06/04670605/r4670479/u0479151.wav'
+]
+
+DEV_NULL = open(os.devnull, 'w')
 
 
 def parse(line):
@@ -98,7 +107,12 @@ def process(file_name):
                 if not os.path.isfile(wav_file_name):
                     not_found.append((wav_file_name, file_name))
                     continue
-                sentences.append((text, wav_file_name))
+                if wav_file_name in BAD_FILES:
+                    # We only want good (non broken) sound files
+                    continue
+                duration_in_seconds = float(subprocess.check_output(['soxi', '-D', wav_file_name], stderr=DEV_NULL))
+                file_size = os.path.getsize(wav_file_name)
+                sentences.append((text, wav_file_name, duration_in_seconds, file_size))
             if should_parse_metadata:
                 key, value = parse_metadata(line)
                 if not key:
@@ -112,13 +126,15 @@ if __name__ == "__main__":
     sentence_count = 0
     not_found_count = 0
     with open('all-train.csv', 'wt') as f:
-        f.write('wav_filename, speaker_id, age, sex, region_of_birth, region_of_youth, transcript\n')
+        f.write('wav_filename, duration_in_seconds, file_size, speaker_id, age, sex, region_of_birth, region_of_youth, transcript\n')
         for file_name in glob.glob("./train/**/*/*.spl", recursive=True):
             sentences, not_found, metadata = process(file_name)
             sentence_count += len(sentences)
             not_found_count += len(not_found)
-            for (text, wav_file) in sentences:
-                f.write("{0}, {1}, {2}, {3}, {4}, {5}, {6}\n".format(wav_file, metadata['speaker_id'], metadata['age'], metadata['sex'], metadata['region_of_birth'], metadata['region_of_youth'], text))
+            for (text, wav_file, duration_in_seconds, file_size) in sentences:
+                if wav_file not in BAD_FILES:
+                    # We only want good (non broken) sound files
+                    f.write("{}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(wav_file, duration_in_seconds, file_size, metadata['speaker_id'], metadata['age'], metadata['sex'], metadata['region_of_birth'], metadata['region_of_youth'], text))
             for (wav_file_name, file_name) in not_found:
                 print("Speech file not found in:\n\t{0}\nas defined in:\n\t{1}\n==================================".format(wav_file_name, file_name))
     print("\nTotal found sentences: {0}\nTotal not found: {1}".format(sentence_count, not_found_count))
