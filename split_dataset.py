@@ -68,15 +68,18 @@ def find_speakers(data_list):
             speaker_ids.append(item['speaker_id'])
     return speakers
 
-def distribute_speakers(speakers, train_size, dev_size, test_size):
+def distribute_speakers(speakers, train_size, dev_size, seed):
     no_train = int(len(speakers) * train_size)
     no_dev = int(len(speakers) * dev_size)
+    random.seed(seed)
     random.shuffle(speakers)
     return (speakers[:no_train], speakers[no_train:no_train+no_dev], speakers[no_train+no_dev:])
 
 if __name__ == "__main__":
+    seed = "1337"
     train = load_train()
     speakers = find_speakers(train)
-    train, dev, test = distribute_speakers(speakers, 0.6, 0.2, 0.2)
+    train, dev, test = distribute_speakers(speakers, 0.6, 0.2, seed)
+
     
     
