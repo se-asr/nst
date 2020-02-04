@@ -122,13 +122,14 @@ def check_distinctness(train, dev, test):
             print(item)
 
 # Checks if the datasets are balanced according to some metrics
-def check_balance(train, dev, test, split):
+def check_balance(train, dev, test, data_list, split):
     metrics = ['age', 'sex', 'region_of_youth']     #Metrics with multiple values
     integer_metrics = ['duration', 'file_size']     #Metrics with single value
 
     train_stats = get_stats(train, metrics, integer_metrics)
     dev_stats = get_stats(dev, metrics, integer_metrics)
     test_stats = get_stats(test, metrics, integer_metrics)
+    all_train_stats = get_stats(data_list, metrics, integer_metrics)
 
     total_rows = {
         'train': len(train),
@@ -145,7 +146,7 @@ def check_balance(train, dev, test, split):
     print_result("Gender", res)
 
     print("### Checking region of youth")
-    res = check_locations(train_stats['region_of_youth'], dev_stats['region_of_youth'], test_stats['region_of_youth'], total_rows, 0.10)
+    res = check_locations(train_stats['region_of_youth'], dev_stats['region_of_youth'], test_stats['region_of_youth'], all_train_stats['region_of_youth'], total_rows, 0.25)
     print_result("Region of youth", res)
     
 def print_result(metric, res):
@@ -158,24 +159,34 @@ def print_result(metric, res):
 def maxdiff(*stats):
     return max(stats) - min(stats)
 
-def get_total_texts_in_split(dataset):
-    total = 0
-    for sex in dataset['sex'].values(): # Any value would work here since the total amount of any stat is the same
-        total += sex
-    return total
-    
 # Returns false if any of the locations has 
-def check_locations(train_locations, dev_locations, test_locations, total_rows, threshold):    
+def check_locations(train_locations, dev_locations, test_locations, all_train_locations, total_rows, threshold):
     train_locations = location_partition(train_locations, total_rows['train'])
     dev_locations = location_partition(dev_locations, total_rows['dev'])
     test_locations = location_partition(test_locations, total_rows['test'])
+    all_train_locations = location_partition(all_train_locations, total_rows['train'] + total_rows['dev'] + total_rows['test'])
 
-    for location in train_locations:
-        if maxdiff(train_locations[location], dev_locations[location], test_locations[location]) > threshold:
-            print("{} is passing the threshold for unbalance".format(location))
+    for location in all_train_locations:
+        if maxdiff(train_locations[location]/all_train_locations[location], dev_locations[location]/all_train_locations[location], test_locations[location]/all_train_locations[location]) > threshold:
+            print("{} is unbalanced".format(location))
+            print(train_locations[location]/all_train_locations[location], dev_locations[location]/all_train_locations[location], test_locations[location]/all_train_locations[location])
             return False
     return True
-    
+#     return (
+#         _check_locations(train_locations, all_train_locations, threshold) and 
+#         _check_locations(dev_locations, all_train_locations, threshold) and 
+#         _check_locations(test_locations, all_train_locations, threshold)
+#     )
+
+# def _check_locations(locations, total, threshold):
+#     for location in locations: 
+#         print("{},{}".format(locations[location], total[location]))
+#         print("{}:{}".format(location, abs(locations[location] - total[location])))
+#         if abs(locations[location] - total[location]) > threshold:
+#             print("{} is unbalanced".format(location))
+#             return False
+#     return True
+
 # Returns how big part of the dataset is from each location
 def location_partition(location_stats, total_rows):
     stats = location_stats.copy()
@@ -189,6 +200,7 @@ def check_gender(train_gender, dev_gender, test_gender, threshold):
     dev_diff = gender_difference(dev_gender)
     test_diff = gender_difference(test_gender)
     print("\nGender difference in absolute percents")
+    print("Threshold: {}".format(threshold))
     print("train: {}\ndev: {}\ntest: {}\n".format(train_diff, dev_diff, test_diff))
     
     return maxdiff(train_diff, dev_diff, test_diff) < threshold
@@ -205,6 +217,7 @@ def check_duration(train_duration, dev_duration, test_duration, split, threshold
     dev_duration = dev_duration/total_duration
     test_duration = test_duration/total_duration
     print("\nDuration difference in absolute percents")
+    print("Threshold: {}".format(threshold))
     print("train: {}\ndev: {}\ntest: {}\n".format(train_duration, dev_duration, test_duration))
     return (abs(train_duration - split['train']) < threshold and 
             abs(dev_duration - split['dev']) < threshold and 
@@ -311,10 +324,9 @@ if __name__ == "__main__":
     check_distinctness(train, dev, test)
         
     print("Checking balance")
-    check_balance(train, dev, test, split)
+    check_balance(train, dev, test, data_list, split)
     
-    # make location threshold relative to total size
-    # check duration
+    # make location threshold relative to total size of location
     # reshuffle if checks fail
 
     with open("train.csv", "w") as train_file:
