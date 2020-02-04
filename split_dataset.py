@@ -122,7 +122,7 @@ def check_distinctness(train, dev, test):
             print(item)
 
 # Checks if the datasets are balanced according to some metrics
-def check_balance(train, dev, test):
+def check_balance(train, dev, test, split):
     metrics = ['age', 'sex', 'region_of_youth']     #Metrics with multiple values
     integer_metrics = ['duration', 'file_size']     #Metrics with single value
 
@@ -136,8 +136,12 @@ def check_balance(train, dev, test):
         'test': len(test)
     }
 
+    print("### Checking duration")
+    res = check_duration(train_stats['duration'], dev_stats['duration'], test_stats['duration'], split, 5)
+    print_result("Duration", res)
+
     print("### Checking gender")
-    res = check_gender(train_stats['sex'], dev_stats['sex'], test_stats['sex'], 0.05)
+    res = check_gender(train_stats['sex'], dev_stats['sex'], test_stats['sex'], 5)
     print_result("Gender", res)
 
     print("### Checking region of youth")
@@ -184,14 +188,27 @@ def check_gender(train_gender, dev_gender, test_gender, threshold):
     train_diff = gender_difference(train_gender)
     dev_diff = gender_difference(dev_gender)
     test_diff = gender_difference(test_gender)
-
-    return maxdiff(train_diff, dev_diff, test_diff) > threshold
+    print("\nGender difference in absolute percents")
+    print("train: {}\ndev: {}\ntest: {}\n".format(train_diff, dev_diff, test_diff))
+    
+    return maxdiff(train_diff, dev_diff, test_diff) < threshold
 
 # Returns the difference between genders in a split
 def gender_difference(gender_stats):
     male = gender_stats['Male'] / (gender_stats['Male'] + gender_stats['Female'])
     female = gender_stats['Female'] / (gender_stats['Male'] + gender_stats['Female'])
     return abs(male - female)
+
+def check_duration(train_duration, dev_duration, test_duration, split, threshold):
+    total_duration = (train_duration + dev_duration + test_duration)
+    train_duration = train_duration/total_duration
+    dev_duration = dev_duration/total_duration
+    test_duration = test_duration/total_duration
+    print("\nDuration difference in absolute percents")
+    print("train: {}\ndev: {}\ntest: {}\n".format(train_duration, dev_duration, test_duration))
+    return (abs(train_duration - split['train']) < threshold and 
+            abs(dev_duration - split['dev']) < threshold and 
+            abs(test_duration - split['test']) < threshold)
 
 # Calculates the average age of a dataset
 def average_age(ages_dict):
@@ -267,6 +284,11 @@ def format_item(item):
     
 if __name__ == "__main__":
     seed = "1337"
+    split = {
+        'train': 0.6,
+        'dev': 0.2,
+        'test': 0.2
+    }
     print("Loading data from file")
     data_list = load_train()
 
@@ -277,7 +299,7 @@ if __name__ == "__main__":
     speakers = find_speakers(data_list)
 
     print("Distributing speakers in train, dev and test sets")
-    train_speakers, dev_speakers, test_speakers = distribute_speakers(speakers, 0.6, 0.2, seed)
+    train_speakers, dev_speakers, test_speakers = distribute_speakers(speakers, split['train'], split['dev'], seed)
 
     print("Checking speaker distinctness")
     check_distinctness(train_speakers, dev_speakers, test_speakers)
@@ -289,8 +311,8 @@ if __name__ == "__main__":
     check_distinctness(train, dev, test)
         
     print("Checking balance")
-    check_balance(train, dev, test)
-
+    check_balance(train, dev, test, split)
+    
     # make location threshold relative to total size
     # check duration
     # reshuffle if checks fail
