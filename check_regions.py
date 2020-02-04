@@ -1,27 +1,4 @@
-def load_train():
-    return _load_data('all-train.csv')
-
-def load_test():
-    return _load_data('all-test.csv')
-
-def _load_data(file_name):
-    all_data = []
-    with open(file_name, "r") as f:
-        f.readline() # Skip header row
-        for line in f:
-            row = line.split(",")
-            data = {
-                'wav_file_name': row[0].strip(),
-                'speaker_id': row[1].strip(),
-                'age': row[2].strip(),
-                'sex': row[3].strip(),
-                'region_of_birth': row[4].strip(),
-                'region_of_youth': row[5].strip(),
-                'text': ', '.join(row[6:]).strip()
-            }
-            all_data.append(data)
-    return all_data
-
+from split_dataset import load_train, load_test
 
 def check_regions(data):
     count = 0

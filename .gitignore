@@ -1,5 +1,6 @@
 train/*
 test/*
+__pycache__/
 
 all-train.csv
 all-test.csv
