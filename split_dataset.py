@@ -62,24 +62,11 @@ def normalize(text):
     text = text.lower()
     return text
 
-# Finds every unique speaker in the dataset
 def find_speakers(data_list):
-    speakers = []
-    speaker_ids = []
-    data = data_list.copy()
-    for item in data:
-        speaker_item = item.copy()
-        if (speaker_item['speaker_id'].startswith("#")):
-            speaker_item['speaker_id'] = speaker_item['speaker_id'][1:] #remove '#' from start of some speaker ids
-       
-        if (speaker_item['speaker_id'] not in speaker_ids):
-            if (filter_text(speaker_item['text'])):
-                continue
-            del speaker_item['text']
-            del speaker_item['wav_file_name']
-            speakers.append(speaker_item)
-            speaker_ids.append(speaker_item['speaker_id'])
-    return speakers
+    speakers = set()
+    for item in data_list:
+        speakers.add(item['speaker_id'])
+    return list(speakers)
 
 # Distributes speakers according to the dataset split sizes
 def distribute_speakers(speakers, train_size, dev_size, seed):
@@ -97,19 +84,18 @@ def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, da
     trcount = dcount = tcount = 0
     data = data_list.copy()
     for item in data:
-        if (not filter_text(item['text'])):    
-            if item['speaker_id'] in speakers_ids_train:
-                item['text'] = normalize(item['text'])
-                train.append(item)
-                trcount += 1
-            elif item['speaker_id'] in speakers_ids_dev:
-                item['text'] = normalize(item['text'])
-                dev.append(item)
-                dcount += 1
-            elif item['speaker_id'] in speakers_ids_test:
-                item['text'] = normalize(item['text'])
-                test.append(item)
-                tcount += 1
+        if item['speaker_id'] in speakers_ids_train:
+            item['text'] = normalize(item['text'])
+            train.append(item)
+            trcount += 1
+        elif item['speaker_id'] in speakers_ids_dev:
+            item['text'] = normalize(item['text'])
+            dev.append(item)
+            dcount += 1
+        elif item['speaker_id'] in speakers_ids_test:
+            item['text'] = normalize(item['text'])
+            test.append(item)
+            tcount += 1
     print(trcount, dcount, tcount)
     return (train, dev, test)
 
@@ -155,7 +141,6 @@ def print_result(metric, res):
 # Returns the largest difference between the items provided
 def maxdiff(*stats):
     return max(stats) - min(stats)
-
 
 def get_total_texts_in_split(dataset):
     total = 0
@@ -232,7 +217,12 @@ def fix_data(data_list):
             items_to_remove.append(i)
         if (data_list[i]['duration'] >= 10.0):      # Deepspeech cant handle clips 10 seconds and longer
             items_to_remove.append(i)
+        if (data_list[i]['speaker_id'] == ''):
+            items_to_remove.append(i)
 
+        data_list[i]['speaker_id'].replace('#', '')
+        data_list[i]['speaker_id'].replace('§', '')
+        data_list[i]['speaker_id'].replace('¨', '')
     # Reverse the list to mitigate index out of bounds when removing items
     items_to_remove.reverse()
     for item in items_to_remove:
@@ -265,13 +255,8 @@ if __name__ == "__main__":
     print("Checking speaker distinctness")
     check_distinctness(train_speakers, dev_speakers, test_speakers)
     
-    # Get ids for each speaker
-    train_ids = [item['speaker_id'] for item in train_speakers]
-    dev_ids = [item['speaker_id'] for item in dev_speakers]
-    test_ids = [item['speaker_id'] for item in test_speakers]
-
     print("Distributing items according to speaker distribution")
-    train, dev, test = distribute_items(train_ids, dev_ids, test_ids, data_list)
+    train, dev, test = distribute_items(train_speakers, dev_speakers, test_speakers, data_list)
     
     print("Checking balance")
     check_balance(train, dev, test)
