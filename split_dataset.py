@@ -38,7 +38,10 @@ def _load_data(file_name):
 def filter_text(text):
     filter_functions = [
         lambda x: x == '( ... tyst under denna inspelning ...)',
-        lambda x: ("è" or "ü" or "î" or "ÿ") in x
+        lambda x: "è" in x,
+        lambda x: "ü" in x,
+        lambda x: "î" in x,
+        lambda x: "ÿ" in x
     ]
     for func in filter_functions:
         if (func(text)):
@@ -46,6 +49,7 @@ def filter_text(text):
     return False
 
 def normalize(text):
+    text = text.lower()
     text = text.replace("-", " ")
     text = text.replace("_", " ")
     text = re.sub("[ ]{2,}", " ", text)
@@ -58,8 +62,8 @@ def normalize(text):
     text = text.replace("\"", "")
     text = text.replace("\\", "")
     text = text.replace("é", "e")
+    text = text.replace("&", "och")
     text = text.strip()
-    text = text.lower()
     return text
 
 def find_speakers(data_list):
@@ -99,8 +103,6 @@ def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, da
     print(trcount, dcount, tcount)
     return (train, dev, test)
 
-# Checks whether any of the items exists in more than one dataset
-# WARNING: Takes LOOOOOONG time to run
 def check_distinctness(train, dev, test):
     for item in train:
         if item in dev or item in test:
@@ -116,9 +118,6 @@ def check_balance(train, dev, test):
     dev_stats = get_stats(dev, metrics, integer_metrics)
     test_stats = get_stats(test, metrics, integer_metrics)
 
-    # train_stats['age'] = average_age(train_stats['age'])
-    # dev_stats['age'] = average_age(dev_stats['age'])
-    # test_stats['age'] = average_age(test_stats['age'])
     dataset_stats = {'train':train_stats, 'dev':dev_stats, 'test':test_stats}
     total_rows = dict()
     for dataset in dataset_stats:
@@ -258,9 +257,12 @@ if __name__ == "__main__":
     print("Distributing items according to speaker distribution")
     train, dev, test = distribute_items(train_speakers, dev_speakers, test_speakers, data_list)
     
+    print("Checking distinctness")
+    # check_distinctness(train, dev, test)
+        
     print("Checking balance")
     check_balance(train, dev, test)
-    
+
     with open("train.csv", "w") as train_file:
         train_file.write('wav_filename,wav_filesize,transcript\n')
         for item in train:
