@@ -103,9 +103,29 @@ def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, da
     print(trcount, dcount, tcount)
     return (train, dev, test)
 
+# Returns a string given an item
+# Item can be either dict or something castable to string
+def item_to_str(item):
+    if (isinstance(item, dict)):
+        item_str = ""
+        for key in item.keys():
+            item_str += str(item[key])
+        return item_str
+    else:
+        return str(item)
+
 def check_distinctness(train, dev, test):
+    exists = set()
     for item in train:
-        if item in dev or item in test:
+        exists.add(item_to_str(item))
+    for item in dev:
+        if item_to_str(item) in exists:
+            print("Duplicate item!")
+            print(item)
+        else:
+            exists.add(item_to_str(item))
+    for item in test:
+        if item_to_str(item) in exists:
             print("Duplicate item!")
             print(item)
 
@@ -209,6 +229,17 @@ def get_stats(dataset, metrics, integer_metrics):
             stats[metric] += item[metric]
     return stats
 
+def filter_file_names(file_name):
+    filter_functions = [
+        lambda x: x == './train/Stasjon3/280799/adb_0467/speech/scr0467/03/04670303/r4670265/u0265070.wav',
+        lambda x: x == './train/Stasjon6/060799/adb_0467/speech/scr0467/06/04670605/r4670479/u0479151.wav',
+        lambda x: x == './train/Stasjon5/220799/adb_0467/speech/scr0467/05/04670505/r4670441/u0441079.wav'
+    ]
+    for func in filter_functions:
+        if (func(file_name)):
+            return True
+    return False
+
 def fix_data(data_list):
     items_to_remove = []
     for i in range(len(data_list)):
@@ -217,6 +248,8 @@ def fix_data(data_list):
         if (data_list[i]['duration'] >= 10.0):      # Deepspeech cant handle clips 10 seconds and longer
             items_to_remove.append(i)
         if (data_list[i]['speaker_id'] == ''):
+            items_to_remove.append(i)
+        if (filter_file_names(data_list[i]['wav_file_name'])):
             items_to_remove.append(i)
 
         data_list[i]['speaker_id'].replace('#', '')
@@ -258,7 +291,7 @@ if __name__ == "__main__":
     train, dev, test = distribute_items(train_speakers, dev_speakers, test_speakers, data_list)
     
     print("Checking distinctness")
-    # check_distinctness(train, dev, test)
+    check_distinctness(train, dev, test)
         
     print("Checking balance")
     check_balance(train, dev, test)
