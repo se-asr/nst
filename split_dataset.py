@@ -7,7 +7,6 @@ import os
 import sys
 import random
 import re
-import copy
 
 def load_train():
     return _load_data('all-train.csv')
@@ -100,15 +99,15 @@ def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, da
     for item in data:
         if (not filter_text(item['text'])):    
             if item['speaker_id'] in speakers_ids_train:
-                normalize(item['text'])
+                item['text'] = normalize(item['text'])
                 train.append(item)
                 trcount += 1
             elif item['speaker_id'] in speakers_ids_dev:
-                normalize(item['text'])
+                item['text'] = normalize(item['text'])
                 dev.append(item)
                 dcount += 1
             elif item['speaker_id'] in speakers_ids_test:
-                normalize(item['text'])
+                item['text'] = normalize(item['text'])
                 test.append(item)
                 tcount += 1
     print(trcount, dcount, tcount)
@@ -239,6 +238,16 @@ def fix_data(data_list):
     for item in items_to_remove:
         del data_list[item]
         
+def format_item(item):
+    item_str = ""
+    item_str += item['wav_file_name']
+    item_str += ","
+    item_str += str(int(item['file_size']))
+    item_str += ","
+    item_str += item['text']
+    item_str += "\n"
+    return item_str
+    
 if __name__ == "__main__":
     seed = "1337"
     print("Loading data from file")
@@ -267,4 +276,19 @@ if __name__ == "__main__":
     print("Checking balance")
     check_balance(train, dev, test)
     
+    with open("train.csv", "w") as train_file:
+        train_file.write('wav_filename,wav_filesize,transcript\n')
+        for item in train:
+            train_file.write(format_item(item))
+
+    with open("dev.csv", "w") as dev_file:
+        dev_file.write('wav_filename,wav_filesize,transcript\n')
+        for item in dev:
+            dev_file.write(format_item(item))
+        
+    with open("test.csv", "w") as test_file:
+        test_file.write('wav_filename,wav_filesize,transcript\n')
+        for item in test:
+            test_file.write(format_item(item))
+        
     
