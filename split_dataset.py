@@ -33,6 +33,7 @@ def _load_data(file_name):
             all_data.append(data)
     return all_data
 
+# Filters every item according to some filter functions defined
 def filter_item(item):
     filter_functions = [
         lambda x: x == '( ... tyst under denna inspelning ...)',
@@ -40,12 +41,13 @@ def filter_item(item):
     ]
     for func in filter_functions:
         if (func(item)):
-            return False
-    return True
+            return True
+    return False
 
 def normalize(item):
     item['text'] = item['text'].lower()
 
+# Finds every unique speaker in the dataset
 def find_speakers(data_list):
     speakers = []
     speaker_ids = []
@@ -60,7 +62,7 @@ def find_speakers(data_list):
             continue
 
         if (item['speaker_id'] not in speaker_ids):
-            if (not filter_item(item['text'])):
+            if (filter_item(item['text'])):
                 continue
             normalize(item)
             del item['text']
@@ -69,6 +71,7 @@ def find_speakers(data_list):
             speaker_ids.append(item['speaker_id'])
     return speakers
 
+# Distributes speakers according to the dataset split sizes
 def distribute_speakers(speakers, train_size, dev_size, seed):
     no_train = int(len(speakers) * train_size)
     no_dev = int(len(speakers) * dev_size)
@@ -76,6 +79,7 @@ def distribute_speakers(speakers, train_size, dev_size, seed):
     random.shuffle(speakers)
     return (speakers[:no_train], speakers[no_train:no_train+no_dev], speakers[no_train+no_dev:])
 
+# Distributes items of the "all-train" file according to the speaker distribution
 def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, data_list):
     train = []
     dev = []
@@ -94,15 +98,19 @@ def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, da
     print(trcount, dcount, tcount)
     return (train, dev, test)
 
+# Checks whether any of the items exists in more than one dataset
+# WARNING: Takes LOOOOOONG time to run
 def check_distinctness(train, dev, test):
     for item in train:
         if item in dev or item in test:
             print("Duplicate item!")
             print(item)
 
+# Checks if the datasets are balanced according to some metrics
 def check_balance(train, dev, test):
-    metrics = ['age', 'sex', 'region_of_youth'] #Metrics with multiple answers
-    integer_metrics = ['duration', 'file_size']   #Metrics with an integer value
+    metrics = ['age', 'sex', 'region_of_youth']     #Metrics with multiple values
+    integer_metrics = ['duration', 'file_size']     #Metrics with single value
+
     train_stats = get_stats(train, metrics, integer_metrics)
     dev_stats = get_stats(dev, metrics, integer_metrics)
     test_stats = get_stats(test, metrics, integer_metrics)
@@ -116,18 +124,32 @@ def check_balance(train, dev, test):
     for dataset in dataset_stats:
         total_rows[dataset] = get_total_texts_in_split(dataset_stats[dataset])
 
-    check_gender(train_stats['sex'], dev_stats['sex'], test_stats['sex'], 0.05)
-    check_locations(train_stats['region_of_youth'], dev_stats['region_of_youth'], test_stats['region_of_youth'], total_rows, 0.10)
+    print("### Checking gender")
+    res = check_gender(train_stats['sex'], dev_stats['sex'], test_stats['sex'], 0.05)
+    print_result("Gender", res)
+
+    print("### Checking region of youth")
+    res = check_locations(train_stats['region_of_youth'], dev_stats['region_of_youth'], test_stats['region_of_youth'], total_rows, 0.10)
+    print_result("Region of youth", res)
     
+def print_result(metric, res):
+    if res:
+        print("### {}: ✓".format(metric))
+    else:
+        print("### {}: ✖".format(metric))
+
+# Returns the largest difference between the items provided
 def maxdiff(*stats):
     return max(stats) - min(stats)
 
+
 def get_total_texts_in_split(dataset):
     total = 0
-    for sex in dataset['sex'].values():
+    for sex in dataset['sex'].values(): # Any value would work here since the total amount of any stat is the same
         total += sex
     return total
     
+# Returns false if any of the locations has 
 def check_locations(train_locations, dev_locations, test_locations, total_rows, threshold):    
     train_locations = location_partition(train_locations, total_rows['train'])
     dev_locations = location_partition(dev_locations, total_rows['dev'])
@@ -139,24 +161,28 @@ def check_locations(train_locations, dev_locations, test_locations, total_rows, 
             return False
     return True
     
+# Returns how big part of the dataset is from each location
 def location_partition(location_stats, total_rows):
     stats = location_stats.copy()
     for location in stats:
         stats[location] = stats[location]/total_rows
     return stats
 
+# Returns false if the difference in gender distribution is greater than the threshold 
 def check_gender(train_gender, dev_gender, test_gender, threshold):
     train_diff = gender_difference(train_gender)
     dev_diff = gender_difference(dev_gender)
     test_diff = gender_difference(test_gender)
-    print(train_diff, dev_diff, test_diff)
+
     return maxdiff(train_diff, dev_diff, test_diff) > threshold
 
+# Returns the difference between genders in a split
 def gender_difference(gender_stats):
     male = gender_stats['Male'] / (gender_stats['Male'] + gender_stats['Female'])
     female = gender_stats['Female'] / (gender_stats['Male'] + gender_stats['Female'])
     return abs(male - female)
 
+# Calculates the average age of a dataset
 def average_age(ages_dict):
     total = 0
     number_of_persons = 0
