@@ -1,8 +1,3 @@
-# read all-train file
-# randomly split into train,dev,dev-test 60/20/20
-# check that each constraint is less than 5% difference
-# write to new csvs, train.csv dev.csv test.csv
-
 import os
 import sys
 import random
@@ -23,7 +18,7 @@ def _load_data(file_name):
             data = {
                 'wav_file_name': row[0].strip(),
                 'duration': float(row[1].strip()),
-                'file_size': float(row[2].strip()),
+                'file_size': int(row[2].strip()),
                 'speaker_id': row[3].strip(),
                 'age': row[4].strip(),
                 'sex': row[5].strip(),
@@ -89,15 +84,12 @@ def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, da
     data = data_list.copy()
     for item in data:
         if item['speaker_id'] in speakers_ids_train:
-            item['text'] = normalize(item['text'])
             train.append(item)
             trcount += 1
         elif item['speaker_id'] in speakers_ids_dev:
-            item['text'] = normalize(item['text'])
             dev.append(item)
             dcount += 1
         elif item['speaker_id'] in speakers_ids_test:
-            item['text'] = normalize(item['text'])
             test.append(item)
             tcount += 1
     print(trcount, dcount, tcount)
@@ -138,10 +130,11 @@ def check_balance(train, dev, test):
     dev_stats = get_stats(dev, metrics, integer_metrics)
     test_stats = get_stats(test, metrics, integer_metrics)
 
-    dataset_stats = {'train':train_stats, 'dev':dev_stats, 'test':test_stats}
-    total_rows = dict()
-    for dataset in dataset_stats:
-        total_rows[dataset] = get_total_texts_in_split(dataset_stats[dataset])
+    total_rows = {
+        'train': len(train),
+        'dev': len(dev),
+        'test': len(test)
+    }
 
     print("### Checking gender")
     res = check_gender(train_stats['sex'], dev_stats['sex'], test_stats['sex'], 0.05)
@@ -255,6 +248,8 @@ def fix_data(data_list):
         data_list[i]['speaker_id'].replace('#', '')
         data_list[i]['speaker_id'].replace('§', '')
         data_list[i]['speaker_id'].replace('¨', '')
+
+        data_list[i]['text'] = normalize(data_list[i]['text'])
     # Reverse the list to mitigate index out of bounds when removing items
     items_to_remove.reverse()
     for item in items_to_remove:
@@ -295,6 +290,10 @@ if __name__ == "__main__":
         
     print("Checking balance")
     check_balance(train, dev, test)
+
+    # make location threshold relative to total size
+    # check duration
+    # reshuffle if checks fail
 
     with open("train.csv", "w") as train_file:
         train_file.write('wav_filename,wav_filesize,transcript\n')
