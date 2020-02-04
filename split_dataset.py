@@ -6,6 +6,8 @@
 import os
 import sys
 import random
+import re
+import copy
 
 def load_train():
     return _load_data('all-train.csv')
@@ -34,41 +36,50 @@ def _load_data(file_name):
     return all_data
 
 # Filters every item according to some filter functions defined
-def filter_item(item):
+def filter_text(text):
     filter_functions = [
         lambda x: x == '( ... tyst under denna inspelning ...)',
-        lambda x: x.endswith(('\\Punkt', '\\Komma', '\\Frågetecken', '\\Utropstecken'))
+        lambda x: ("è" or "ü" or "î" or "ÿ") in x
     ]
     for func in filter_functions:
-        if (func(item)):
+        if (func(text)):
             return True
     return False
 
-def normalize(item):
-    item['text'] = item['text'].lower()
+def normalize(text):
+    text = text.replace("-", " ")
+    text = text.replace("_", " ")
+    text = re.sub("[ ]{2,}", " ", text)
+    text = text.replace(".", "")
+    text = text.replace(",", "")
+    text = text.replace(";", "")
+    text = text.replace("?", "")
+    text = text.replace("!", "")
+    text = text.replace(":", "")
+    text = text.replace("\"", "")
+    text = text.replace("\\", "")
+    text = text.replace("é", "e")
+    text = text.strip()
+    text = text.lower()
+    return text
 
 # Finds every unique speaker in the dataset
 def find_speakers(data_list):
     speakers = []
     speaker_ids = []
-
-    for item in data_list.copy():
-        if (item['speaker_id'].startswith("#")):
-            item['speaker_id'] = item['speaker_id'][1:] #remove '#' from start of some speaker ids
-        
-        try:
-            item['speaker_id'] = int(item['speaker_id'])
-        except:
-            continue
-
-        if (item['speaker_id'] not in speaker_ids):
-            if (filter_item(item['text'])):
+    data = data_list.copy()
+    for item in data:
+        speaker_item = item.copy()
+        if (speaker_item['speaker_id'].startswith("#")):
+            speaker_item['speaker_id'] = speaker_item['speaker_id'][1:] #remove '#' from start of some speaker ids
+       
+        if (speaker_item['speaker_id'] not in speaker_ids):
+            if (filter_text(speaker_item['text'])):
                 continue
-            normalize(item)
-            del item['text']
-            del item['wav_file_name']
-            speakers.append(item)
-            speaker_ids.append(item['speaker_id'])
+            del speaker_item['text']
+            del speaker_item['wav_file_name']
+            speakers.append(speaker_item)
+            speaker_ids.append(speaker_item['speaker_id'])
     return speakers
 
 # Distributes speakers according to the dataset split sizes
@@ -85,16 +96,21 @@ def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, da
     dev = []
     test = []
     trcount = dcount = tcount = 0
-    for item in data_list.copy():
-        if item['speaker_id'] in speakers_ids_train:
-            train.append(item)
-            trcount += 1
-        elif item['speaker_id'] in speakers_ids_dev:
-            dev.append(item)
-            dcount += 1
-        elif item['speaker_id'] in speakers_ids_test:
-            test.append(item)
-            tcount += 1
+    data = data_list.copy()
+    for item in data:
+        if (not filter_text(item['text'])):    
+            if item['speaker_id'] in speakers_ids_train:
+                normalize(item['text'])
+                train.append(item)
+                trcount += 1
+            elif item['speaker_id'] in speakers_ids_dev:
+                normalize(item['text'])
+                dev.append(item)
+                dcount += 1
+            elif item['speaker_id'] in speakers_ids_test:
+                normalize(item['text'])
+                test.append(item)
+                tcount += 1
     print(trcount, dcount, tcount)
     return (train, dev, test)
 
@@ -114,11 +130,10 @@ def check_balance(train, dev, test):
     train_stats = get_stats(train, metrics, integer_metrics)
     dev_stats = get_stats(dev, metrics, integer_metrics)
     test_stats = get_stats(test, metrics, integer_metrics)
-    
-    train_stats['age'] = average_age(train_stats['age'])
-    dev_stats['age'] = average_age(dev_stats['age'])
-    test_stats['age'] = average_age(test_stats['age'])
 
+    # train_stats['age'] = average_age(train_stats['age'])
+    # dev_stats['age'] = average_age(dev_stats['age'])
+    # test_stats['age'] = average_age(test_stats['age'])
     dataset_stats = {'train':train_stats, 'dev':dev_stats, 'test':test_stats}
     total_rows = dict()
     for dataset in dataset_stats:
@@ -211,17 +226,36 @@ def get_stats(dataset, metrics, integer_metrics):
             stats[metric] += item[metric]
     return stats
 
+def fix_data(data_list):
+    items_to_remove = []
+    for i in range(len(data_list)):
+        if (filter_text(data_list[i]['text'])):     # Filter out items with text that we don't want
+            items_to_remove.append(i)
+        if (data_list[i]['duration'] >= 10.0):      # Deepspeech cant handle clips 10 seconds and longer
+            items_to_remove.append(i)
+
+    # Reverse the list to mitigate index out of bounds when removing items
+    items_to_remove.reverse()
+    for item in items_to_remove:
+        del data_list[item]
+        
 if __name__ == "__main__":
     seed = "1337"
     print("Loading data from file")
     data_list = load_train()
+
+    print("Fixing data")
+    fix_data(data_list)
+
     print("Finding unique speakers")
     speakers = find_speakers(data_list)
+
     print("Distributing speakers in train, dev and test sets")
     train_speakers, dev_speakers, test_speakers = distribute_speakers(speakers, 0.6, 0.2, seed)
 
     print("Checking speaker distinctness")
     check_distinctness(train_speakers, dev_speakers, test_speakers)
+    
     # Get ids for each speaker
     train_ids = [item['speaker_id'] for item in train_speakers]
     dev_ids = [item['speaker_id'] for item in dev_speakers]
@@ -232,7 +266,5 @@ if __name__ == "__main__":
     
     print("Checking balance")
     check_balance(train, dev, test)
-    # print("Checking distinctness")
-    # check_distinctness(train, dev, test)
     
     
