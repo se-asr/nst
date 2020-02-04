@@ -103,10 +103,70 @@ def check_distinctness(train, dev, test):
 def check_balance(train, dev, test):
     metrics = ['age', 'sex', 'region_of_youth'] #Metrics with multiple answers
     integer_metrics = ['duration', 'file_size']   #Metrics with an integer value
-    print(get_stats(train, metrics, integer_metrics))
-    print(get_stats(dev, metrics, integer_metrics))
-    print(get_stats(test, metrics, integer_metrics))
+    train_stats = get_stats(train, metrics, integer_metrics)
+    dev_stats = get_stats(dev, metrics, integer_metrics)
+    test_stats = get_stats(test, metrics, integer_metrics)
+    
+    train_stats['age'] = average_age(train_stats['age'])
+    dev_stats['age'] = average_age(dev_stats['age'])
+    test_stats['age'] = average_age(test_stats['age'])
 
+    dataset_stats = {'train':train_stats, 'dev':dev_stats, 'test':test_stats}
+    total_rows = dict()
+    for dataset in dataset_stats:
+        total_rows[dataset] = get_total_texts_in_split(dataset_stats[dataset])
+
+    check_gender(train_stats['sex'], dev_stats['sex'], test_stats['sex'], 0.05)
+    check_locations(train_stats['region_of_youth'], dev_stats['region_of_youth'], test_stats['region_of_youth'], total_rows, 0.10)
+    
+def maxdiff(*stats):
+    return max(stats) - min(stats)
+
+def get_total_texts_in_split(dataset):
+    total = 0
+    for sex in dataset['sex'].values():
+        total += sex
+    return total
+    
+def check_locations(train_locations, dev_locations, test_locations, total_rows, threshold):    
+    train_locations = location_partition(train_locations, total_rows['train'])
+    dev_locations = location_partition(dev_locations, total_rows['dev'])
+    test_locations = location_partition(test_locations, total_rows['test'])
+
+    for location in train_locations:
+        if maxdiff(train_locations[location], dev_locations[location], test_locations[location]) > threshold:
+            print("{} is passing the threshold for unbalance".format(location))
+            return False
+    return True
+    
+def location_partition(location_stats, total_rows):
+    stats = location_stats.copy()
+    for location in stats:
+        stats[location] = stats[location]/total_rows
+    return stats
+
+def check_gender(train_gender, dev_gender, test_gender, threshold):
+    train_diff = gender_difference(train_gender)
+    dev_diff = gender_difference(dev_gender)
+    test_diff = gender_difference(test_gender)
+    print(train_diff, dev_diff, test_diff)
+    return maxdiff(train_diff, dev_diff, test_diff) > threshold
+
+def gender_difference(gender_stats):
+    male = gender_stats['Male'] / (gender_stats['Male'] + gender_stats['Female'])
+    female = gender_stats['Female'] / (gender_stats['Male'] + gender_stats['Female'])
+    return abs(male - female)
+
+def average_age(ages_dict):
+    total = 0
+    number_of_persons = 0
+    for age in ages_dict.keys():
+        try:
+            total += int(age) * ages_dict[age]
+            number_of_persons += ages_dict[age]
+        except:
+            continue
+    return total/number_of_persons
 
 def get_stats(dataset, metrics, integer_metrics):
     stats = dict()
