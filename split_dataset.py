@@ -282,7 +282,8 @@ def filter_file_names(file_name):
     filter_functions = [
         lambda x: x == './train/Stasjon3/280799/adb_0467/speech/scr0467/03/04670303/r4670265/u0265070.wav',
         lambda x: x == './train/Stasjon6/060799/adb_0467/speech/scr0467/06/04670605/r4670479/u0479151.wav',
-        lambda x: x == './train/Stasjon5/220799/adb_0467/speech/scr0467/05/04670505/r4670441/u0441079.wav'
+        lambda x: x == './train/Stasjon5/220799/adb_0467/speech/scr0467/05/04670505/r4670441/u0441079.wav',
+        lambda x: x == './train/Stasjon7/160799/adb_0467/speech/scr0467/07/04670706/r4670598/u0598102.wav'
     ]
     for func in filter_functions:
         if (func(file_name)):
