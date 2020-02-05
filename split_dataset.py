@@ -392,17 +392,17 @@ if __name__ == "__main__":
                 break
             seed = random.randint(1,1000000)
     
-    with open("{}-train.csv".format(args.out_prefix), "w") as train_file:
+    with open("{}train.csv".format(args.out_prefix), "w") as train_file:
         train_file.write('wav_filename,wav_filesize,transcript\n')
         for item in train:
             train_file.write(format_item(item))
 
-    with open("{}-dev.csv".format(args.out_prefix), "w") as dev_file:
+    with open("{}dev.csv".format(args.out_prefix), "w") as dev_file:
         dev_file.write('wav_filename,wav_filesize,transcript\n')
         for item in dev:
             dev_file.write(format_item(item))
         
-    with open("{}-test.csv".format(args.out_prefix), "w") as test_file:
+    with open("{}test.csv".format(args.out_prefix), "w") as test_file:
         test_file.write('wav_filename,wav_filesize,transcript\n')
         for item in test:
             test_file.write(format_item(item))
