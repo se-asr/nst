@@ -1,4 +1,3 @@
-import os
 import sys
 import random
 import re
@@ -6,21 +5,25 @@ import argparse
 
 DEFAULT_SEED = 1337
 
+
 def load_arg_parser():
-    parser = argparse.ArgumentParser(description='Split input data file in three sets')
+    parser = argparse.ArgumentParser(description='Split input data file in \
+                                                  three sets')
     parser.add_argument('--seed', dest='seed', type=int, help='applies seed to random split, use to achieve same results as earlier run')
     parser.add_argument('--split', dest='split', nargs='+', type=int, help='split sizes to use [train, dev, test] (default: 0.6 0.2 0.2)', default=[0.6, 0.2, 0.2])
     parser.add_argument('--file', type=str, help='path of input file (default: all-train.csv)', default='all-train.csv')
     parser.add_argument('--out-prefix', type=str, help='prefix for out files (default: <empty string>, produces train.csv dev.csv test.csv)', default='')
     parser.add_argument('--no-test', help='merge dev and test sets to one file, useful if you have already set aside a test set', action='store_true')
     return parser
-    
+
 
 def load_train():
     return _load_data('all-train.csv')
 
+
 def load_test():
     return _load_data('all-test.csv')
+
 
 def _load_data(file_name):
     all_data = []
@@ -42,6 +45,7 @@ def _load_data(file_name):
             all_data.append(data)
     return all_data
 
+
 # Filters every item according to some filter functions defined
 def filter_text(text):
     filter_functions = [
@@ -55,6 +59,7 @@ def filter_text(text):
         if (func(text)):
             return True
     return False
+
 
 def normalize(text):
     text = text.lower()
@@ -74,6 +79,7 @@ def normalize(text):
     text = text.strip()
     return text
 
+
 def find_speakers(data_list):
     speakers = []
     speaker_ids = []
@@ -90,6 +96,7 @@ def find_speakers(data_list):
             speakers.append(speaker_item)
             speaker_ids.append(speaker_item['speaker_id'])
     return speakers
+
 
 def distribute_speakers(speakers, train_size, dev_size, seed):
     speakers_by_region = dict()
@@ -115,8 +122,11 @@ def distribute_speakers(speakers, train_size, dev_size, seed):
     
     return (train, dev, test)
 
-# Distributes items of the "all-train" file according to the speaker distribution
-def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, data_list):
+
+# Distributes items of the "all-train" file according to the speaker
+# distribution
+def distribute_items(speakers_ids_train, speakers_ids_dev,
+                     speakers_ids_test, data_list):
     train = []
     dev = []
     test = []
@@ -134,6 +144,7 @@ def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, da
     print(trcount, dcount, tcount)
     return (train, dev, test)
 
+
 # Returns a string given an item
 # Item can be either dict or something castable to string
 def item_to_str(item):
@@ -144,6 +155,7 @@ def item_to_str(item):
         return item_str
     else:
         return str(item)
+
 
 def check_distinctness(train, dev, test):
     exists = set()
@@ -162,6 +174,7 @@ def check_distinctness(train, dev, test):
             print(item)
             return False
     return True
+
 
 # Checks if the datasets are balanced according to some metrics
 def check_balance(train, dev, test, data_list, split):
@@ -199,6 +212,7 @@ def check_balance(train, dev, test, data_list, split):
 
     return True
 
+
 def print_result(metric, res):
     if res:
         print("### {}: ✓".format(metric))
@@ -206,24 +220,36 @@ def print_result(metric, res):
         print("### {}: ✖".format(metric))
     print("\n")
 
+
 # Returns the largest difference between the items provided
 def maxdiff(*stats):
     return max(stats) - min(stats)
 
-# Returns false if any of the locations has 
-def check_locations(train_locations, dev_locations, test_locations, all_train_locations, total_rows, threshold):
+
+# Returns false if any of the locations has
+def check_locations(train_locations, dev_locations, test_locations, 
+                    all_train_locations, total_rows, threshold):
     train_locations = location_partition(train_locations, total_rows['train'])
     dev_locations = location_partition(dev_locations, total_rows['dev'])
     test_locations = location_partition(test_locations, total_rows['test'])
-    all_train_locations = location_partition(all_train_locations, total_rows['train'] + total_rows['dev'] + total_rows['test'])
+    all_train_locations = location_partition(all_train_locations,
+                                             total_rows['train'] +
+                                             total_rows['dev'] +
+                                             total_rows['test'])
 
     success = True
     for location in all_train_locations:
-        if maxdiff(train_locations[location]/all_train_locations[location], dev_locations[location]/all_train_locations[location], test_locations[location]/all_train_locations[location]) > threshold:
+        if maxdiff(train_locations[location]/all_train_locations[location],
+                   dev_locations[location]/all_train_locations[location],
+                   test_locations[location]/all_train_locations[location]
+                   ) > threshold:
             print("{} is unbalanced".format(location))
-            print(train_locations[location]/all_train_locations[location], dev_locations[location]/all_train_locations[location], test_locations[location]/all_train_locations[location])
+            print(train_locations[location]/all_train_locations[location],
+                  dev_locations[location]/all_train_locations[location],
+                  test_locations[location]/all_train_locations[location])
             success = False
     return success
+
 
 # Returns how big part of the dataset is from each location
 def location_partition(location_stats, total_rows):
@@ -232,7 +258,9 @@ def location_partition(location_stats, total_rows):
         stats[location] = stats[location]/total_rows
     return stats
 
-# Returns false if the difference in gender distribution is greater than the threshold 
+
+# Returns false if the difference in gender distribution is greater
+# than the threshold
 def check_gender(train_gender, dev_gender, test_gender, threshold):
     train_diff = gender_difference(train_gender)
     dev_diff = gender_difference(dev_gender)
@@ -243,13 +271,16 @@ def check_gender(train_gender, dev_gender, test_gender, threshold):
     
     return maxdiff(train_diff, dev_diff, test_diff) < threshold
 
+
 # Returns the difference between genders in a split
 def gender_difference(gender_stats):
     male = gender_stats['Male'] / (gender_stats['Male'] + gender_stats['Female'])
     female = gender_stats['Female'] / (gender_stats['Male'] + gender_stats['Female'])
     return abs(male - female)
 
-def check_duration(train_duration, dev_duration, test_duration, split, threshold):
+
+def check_duration(train_duration, dev_duration, test_duration, split,
+                   threshold):
     total_duration = (train_duration + dev_duration + test_duration)
     train_duration = train_duration/total_duration
     dev_duration = dev_duration/total_duration
@@ -257,9 +288,10 @@ def check_duration(train_duration, dev_duration, test_duration, split, threshold
     print("\nDuration difference in absolute percents")
     print("Threshold: {}".format(threshold))
     print("train: {}\ndev: {}\ntest: {}\n".format(train_duration, dev_duration, test_duration))
-    return (abs(train_duration - split['train']) < threshold and 
-            abs(dev_duration - split['dev']) < threshold and 
+    return (abs(train_duration - split['train']) < threshold and
+            abs(dev_duration - split['dev']) < threshold and
             abs(test_duration - split['test']) < threshold)
+
 
 # Calculates the average age of a dataset
 def average_age(ages_dict):
@@ -272,6 +304,7 @@ def average_age(ages_dict):
         except:
             continue
     return total/number_of_persons
+
 
 def get_stats(dataset, metrics, integer_metrics):
     stats = dict()
@@ -290,6 +323,7 @@ def get_stats(dataset, metrics, integer_metrics):
             stats[metric] += item[metric]
     return stats
 
+
 def filter_file_names(file_name):
     filter_functions = [
         lambda x: x == './train/Stasjon3/280799/adb_0467/speech/scr0467/03/04670303/r4670265/u0265070.wav',
@@ -301,6 +335,7 @@ def filter_file_names(file_name):
         if (func(file_name)):
             return True
     return False
+
 
 def fix_data(data_list):
     items_to_remove = []
@@ -323,7 +358,8 @@ def fix_data(data_list):
     items_to_remove.reverse()
     for item in items_to_remove:
         del data_list[item]
-        
+
+
 def format_item(item):
     item_str = ""
     item_str += item['wav_file_name']
@@ -333,7 +369,8 @@ def format_item(item):
     item_str += item['text']
     item_str += "\n"
     return item_str
-    
+
+
 def iteration(speakers, split, seed):
     success = True
     print("seed is: ", seed)
@@ -348,8 +385,10 @@ def iteration(speakers, split, seed):
     test_ids = [item['speaker_id'] for item in test_speakers]
 
     print("Distributing items according to speaker distribution")
-    train, dev, test = distribute_items(train_ids, dev_ids, test_ids, data_list)
-        
+    train, dev, test = distribute_items(
+        train_ids, dev_ids, test_ids, data_list
+    )
+
     print("Checking balance")
     success &= check_balance(train, dev, test, data_list, split)
 
@@ -358,8 +397,8 @@ def iteration(speakers, split, seed):
 
     return success, train, dev, test
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     args_parser = load_arg_parser()
 
     args = args_parser.parse_args(sys.argv[1:])
@@ -382,7 +421,7 @@ if __name__ == "__main__":
 
     print("Finding unique speakers")
     speakers = find_speakers(data_list)
-    
+
     if (args.seed):
         res, train, dev, test = iteration(speakers, split, args.seed)
     else:
