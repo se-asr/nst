@@ -12,6 +12,7 @@ def load_arg_parser():
     parser.add_argument('--split', dest='split', nargs='+', type=int, help='split sizes to use [train, dev, test] (default: 0.6 0.2 0.2)', default=[0.6, 0.2, 0.2])
     parser.add_argument('--file', type=str, help='path of input file (default: all-train.csv)', default='all-train.csv')
     parser.add_argument('--out-prefix', type=str, help='prefix for out files (default: <empty string>, produces train.csv dev.csv test.csv)', default='')
+    parser.add_argument('--no-test', help='merge dev and test sets to one file, useful if you have already set aside a test set', action='store_true')
     return parser
     
 
@@ -390,21 +391,25 @@ if __name__ == "__main__":
             res, train, dev, test = iteration(speakers, split, seed)
             if res:
                 break
-            seed = random.randint(1,1000000)
-    
+            seed = random.randint(1, 1000000)
+
     with open("{}train.csv".format(args.out_prefix), "w") as train_file:
         train_file.write('wav_filename,wav_filesize,transcript\n')
         for item in train:
             train_file.write(format_item(item))
 
-    with open("{}dev.csv".format(args.out_prefix), "w") as dev_file:
-        dev_file.write('wav_filename,wav_filesize,transcript\n')
-        for item in dev:
-            dev_file.write(format_item(item))
-        
-    with open("{}test.csv".format(args.out_prefix), "w") as test_file:
-        test_file.write('wav_filename,wav_filesize,transcript\n')
-        for item in test:
-            test_file.write(format_item(item))
-        
-    
+    if (args.no_test):
+        with open("{}dev.csv".format(args.out_prefix), "w") as dev_file:
+            dev_file.write('wav_filename,wav_filesize,transcript\n')
+            for item in dev+test:
+                dev_file.write(format_item(item))
+    else:
+        with open("{}dev.csv".format(args.out_prefix), "w") as dev_file:
+            dev_file.write('wav_filename,wav_filesize,transcript\n')
+            for item in dev:
+                dev_file.write(format_item(item))
+
+        with open("{}test.csv".format(args.out_prefix), "w") as test_file:
+            test_file.write('wav_filename,wav_filesize,transcript\n')
+            for item in test:
+                test_file.write(format_item(item))
