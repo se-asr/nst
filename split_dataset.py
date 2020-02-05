@@ -2,6 +2,17 @@ import os
 import sys
 import random
 import re
+import argparse
+
+DEFAULT_SEED = 1337
+
+def load_arg_parser():
+    parser = argparse.ArgumentParser(description='Split input data file in three sets')
+    parser.add_argument('--seed', dest='seed', type=int, help='applies seed to random split, use to achieve same results as earlier run')
+    parser.add_argument('--split', dest='split', nargs='+', type=int, help='split sizes to use [train, dev, test] (default: 0.6 0.2 0.2)', default=[0.6, 0.2, 0.2])
+    parser.add_argument('--file', type=str, help='path of input file (default: all-train.csv)', default='all-train.csv')
+    return parser
+    
 
 def load_train():
     return _load_data('all-train.csv')
@@ -77,7 +88,6 @@ def find_speakers(data_list):
             speakers.append(speaker_item)
             speaker_ids.append(speaker_item['speaker_id'])
     return speakers
-
 
 def distribute_speakers(speakers, train_size, dev_size, seed):
     speakers_by_region = dict()
@@ -322,17 +332,48 @@ def format_item(item):
     item_str += "\n"
     return item_str
     
+def iteration(speakers, split, seed):
+    success = True
+    print("seed is: ", seed)
+    print("Distributing speakers in train, dev and test sets")
+    train_speakers, dev_speakers, test_speakers = distribute_speakers(speakers, split['train'], split['dev'], seed)
+
+    print("Checking speaker distinctness")
+    success &= check_distinctness(train_speakers, dev_speakers, test_speakers)
+
+    train_ids = [item['speaker_id'] for item in train_speakers]
+    dev_ids = [item['speaker_id'] for item in dev_speakers]
+    test_ids = [item['speaker_id'] for item in test_speakers]
+
+    print("Distributing items according to speaker distribution")
+    train, dev, test = distribute_items(train_ids, dev_ids, test_ids, data_list)
+        
+    print("Checking balance")
+    success &= check_balance(train, dev, test, data_list, split)
+
+    print("Checking distinctness")
+    success &= check_distinctness(train, dev, test)
+
+    return success, train, dev, test
+
 if __name__ == "__main__":
-    seed = 1337
-    
+
+    args_parser = load_arg_parser()
+
+    args = args_parser.parse_args(sys.argv[1:])
+
+    if (sum(args.split)!=100):
+        print("Sum of split must be 100")
+        exit(0)
+
     split = {
-        'train': 0.6,
-        'dev': 0.2,
-        'test': 0.2
+        'train': args.split[0]/100,
+        'dev': args.split[1]/100,
+        'test': args.split[2]/100
     }
 
-    print("Loading data from file")
-    data_list = load_train()
+    print("Loading data from file {}".format(args.file))
+    data_list = _load_data(args.file)
 
     print("Fixing data")
     fix_data(data_list)
@@ -340,40 +381,15 @@ if __name__ == "__main__":
     print("Finding unique speakers")
     speakers = find_speakers(data_list)
     
-    success = False
-    i = 0
-    while True:
-        i+=1
-        print("seed is: ", seed)
-        print("{} iterations".format(i))
-        print("Distributing speakers in train, dev and test sets")
-        train_speakers, dev_speakers, test_speakers = distribute_speakers(speakers, split['train'], split['dev'], seed)
-
-        seed = random.randint(1,1000000)
-
-        print("Checking speaker distinctness")
-        res = check_distinctness(train_speakers, dev_speakers, test_speakers)
-        if (not res):
-            continue
-
-        train_ids = [item['speaker_id'] for item in train_speakers]
-        dev_ids = [item['speaker_id'] for item in dev_speakers]
-        test_ids = [item['speaker_id'] for item in test_speakers]
-
-        print("Distributing items according to speaker distribution")
-        train, dev, test = distribute_items(train_ids, dev_ids, test_ids, data_list)
-            
-        print("Checking balance")
-        res = check_balance(train, dev, test, data_list, split)
-        if (not res):
-            continue
-
-        print("Checking distinctness")
-        res = check_distinctness(train, dev, test)
-        if (not res):
-            continue
-
-        break
+    if (args.seed):
+        res, train, dev, test = iteration(speakers, split, args.seed)
+    else:
+        seed = DEFAULT_SEED
+        while True:
+            res, train, dev, test = iteration(speakers, split, seed)
+            if res:
+                break
+            seed = random.randint(1,1000000)
     
     with open("train.csv", "w") as train_file:
         train_file.write('wav_filename,wav_filesize,transcript\n')
