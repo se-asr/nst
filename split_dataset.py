@@ -62,18 +62,46 @@ def normalize(text):
     return text
 
 def find_speakers(data_list):
-    speakers = set()
-    for item in data_list:
-        speakers.add(item['speaker_id'])
-    return list(speakers)
+    speakers = []
+    speaker_ids = []
+    data = data_list.copy()
 
-# Distributes speakers according to the dataset split sizes
+    for item in data:
+        speaker_item = item.copy()
+
+        if (speaker_item['speaker_id'] not in speaker_ids):
+            del speaker_item['text']
+            del speaker_item['wav_file_name']
+            del speaker_item['duration']
+            del speaker_item['file_size']
+            speakers.append(speaker_item)
+            speaker_ids.append(speaker_item['speaker_id'])
+    return speakers
+
+
 def distribute_speakers(speakers, train_size, dev_size, seed):
-    no_train = int(len(speakers) * train_size)
-    no_dev = int(len(speakers) * dev_size)
+    speakers_by_region = dict()
+    for speaker in speakers:
+        region = speaker['region_of_youth']
+        if region not in speakers_by_region.keys():
+            speakers_by_region[region] = []
+        speakers_by_region[region].append(speaker)
+
+    train = []
+    dev = []
+    test =  []
     random.seed(seed)
-    random.shuffle(speakers)
-    return (speakers[:no_train], speakers[no_train:no_train+no_dev], speakers[no_train+no_dev:])
+    for region in speakers_by_region:
+        no_train = int(len(speakers_by_region[region]) * train_size)
+        no_dev = int(len(speakers_by_region[region]) * dev_size)
+
+        random.shuffle(speakers_by_region[region])
+
+        train.extend(speakers_by_region[region][:no_train])
+        dev.extend(speakers_by_region[region][no_train:no_train+no_dev])
+        test.extend(speakers_by_region[region][no_train+no_dev:])
+    
+    return (train, dev, test)
 
 # Distributes items of the "all-train" file according to the speaker distribution
 def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, data_list):
@@ -81,8 +109,7 @@ def distribute_items(speakers_ids_train, speakers_ids_dev, speakers_ids_test, da
     dev = []
     test = []
     trcount = dcount = tcount = 0
-    data = data_list.copy()
-    for item in data:
+    for item in data_list:
         if item['speaker_id'] in speakers_ids_train:
             train.append(item)
             trcount += 1
@@ -114,12 +141,15 @@ def check_distinctness(train, dev, test):
         if item_to_str(item) in exists:
             print("Duplicate item!")
             print(item)
+            return False
         else:
             exists.add(item_to_str(item))
     for item in test:
         if item_to_str(item) in exists:
             print("Duplicate item!")
             print(item)
+            return False
+    return True
 
 # Checks if the datasets are balanced according to some metrics
 def check_balance(train, dev, test, data_list, split):
@@ -137,23 +167,32 @@ def check_balance(train, dev, test, data_list, split):
         'test': len(test)
     }
 
+    print("### Checking region of youth")
+    res = check_locations(train_stats['region_of_youth'], dev_stats['region_of_youth'], test_stats['region_of_youth'], all_train_stats['region_of_youth'], total_rows, 0.20)
+    print_result("Region of youth", res)
+    if (not res):
+        return False
+
     print("### Checking duration")
     res = check_duration(train_stats['duration'], dev_stats['duration'], test_stats['duration'], split, 5)
     print_result("Duration", res)
+    if (not res):
+        return False
 
     print("### Checking gender")
     res = check_gender(train_stats['sex'], dev_stats['sex'], test_stats['sex'], 5)
     print_result("Gender", res)
+    if (not res):
+        return False
 
-    print("### Checking region of youth")
-    res = check_locations(train_stats['region_of_youth'], dev_stats['region_of_youth'], test_stats['region_of_youth'], all_train_stats['region_of_youth'], total_rows, 0.25)
-    print_result("Region of youth", res)
-    
+    return True
+
 def print_result(metric, res):
     if res:
         print("### {}: ✓".format(metric))
     else:
         print("### {}: ✖".format(metric))
+    print("\n")
 
 # Returns the largest difference between the items provided
 def maxdiff(*stats):
@@ -166,26 +205,13 @@ def check_locations(train_locations, dev_locations, test_locations, all_train_lo
     test_locations = location_partition(test_locations, total_rows['test'])
     all_train_locations = location_partition(all_train_locations, total_rows['train'] + total_rows['dev'] + total_rows['test'])
 
+    success = True
     for location in all_train_locations:
         if maxdiff(train_locations[location]/all_train_locations[location], dev_locations[location]/all_train_locations[location], test_locations[location]/all_train_locations[location]) > threshold:
             print("{} is unbalanced".format(location))
             print(train_locations[location]/all_train_locations[location], dev_locations[location]/all_train_locations[location], test_locations[location]/all_train_locations[location])
-            return False
-    return True
-#     return (
-#         _check_locations(train_locations, all_train_locations, threshold) and 
-#         _check_locations(dev_locations, all_train_locations, threshold) and 
-#         _check_locations(test_locations, all_train_locations, threshold)
-#     )
-
-# def _check_locations(locations, total, threshold):
-#     for location in locations: 
-#         print("{},{}".format(locations[location], total[location]))
-#         print("{}:{}".format(location, abs(locations[location] - total[location])))
-#         if abs(locations[location] - total[location]) > threshold:
-#             print("{} is unbalanced".format(location))
-#             return False
-#     return True
+            success = False
+    return success
 
 # Returns how big part of the dataset is from each location
 def location_partition(location_stats, total_rows):
@@ -296,12 +322,14 @@ def format_item(item):
     return item_str
     
 if __name__ == "__main__":
-    seed = "1337"
+    seed = 1337
+    
     split = {
         'train': 0.6,
         'dev': 0.2,
         'test': 0.2
     }
+
     print("Loading data from file")
     data_list = load_train()
 
@@ -310,25 +338,42 @@ if __name__ == "__main__":
 
     print("Finding unique speakers")
     speakers = find_speakers(data_list)
-
-    print("Distributing speakers in train, dev and test sets")
-    train_speakers, dev_speakers, test_speakers = distribute_speakers(speakers, split['train'], split['dev'], seed)
-
-    print("Checking speaker distinctness")
-    check_distinctness(train_speakers, dev_speakers, test_speakers)
     
-    print("Distributing items according to speaker distribution")
-    train, dev, test = distribute_items(train_speakers, dev_speakers, test_speakers, data_list)
-    
-    print("Checking distinctness")
-    check_distinctness(train, dev, test)
-        
-    print("Checking balance")
-    check_balance(train, dev, test, data_list, split)
-    
-    # make location threshold relative to total size of location
-    # reshuffle if checks fail
+    success = False
+    i = 0
+    while True:
+        i+=1
+        print("seed is: ", seed)
+        print("{} iterations".format(i))
+        print("Distributing speakers in train, dev and test sets")
+        train_speakers, dev_speakers, test_speakers = distribute_speakers(speakers, split['train'], split['dev'], seed)
 
+        seed = random.randint(1,1000000)
+
+        print("Checking speaker distinctness")
+        res = check_distinctness(train_speakers, dev_speakers, test_speakers)
+        if (not res):
+            continue
+
+        train_ids = [item['speaker_id'] for item in train_speakers]
+        dev_ids = [item['speaker_id'] for item in dev_speakers]
+        test_ids = [item['speaker_id'] for item in test_speakers]
+
+        print("Distributing items according to speaker distribution")
+        train, dev, test = distribute_items(train_ids, dev_ids, test_ids, data_list)
+            
+        print("Checking balance")
+        res = check_balance(train, dev, test, data_list, split)
+        if (not res):
+            continue
+
+        print("Checking distinctness")
+        res = check_distinctness(train, dev, test)
+        if (not res):
+            continue
+
+        break
+    
     with open("train.csv", "w") as train_file:
         train_file.write('wav_filename,wav_filesize,transcript\n')
         for item in train:
