@@ -14,6 +14,7 @@ def load_arg_parser():
     parser.add_argument('--file', type=str, help='path of input file (default: all-train.csv)', default='all-train.csv')
     parser.add_argument('--out-prefix', type=str, help='prefix for out files (default: <empty string>, produces train.csv dev.csv test.csv)', default='')
     parser.add_argument('--no-test', help='merge dev and test sets to one file, useful if you have already set aside a test set', action='store_true')
+    parser.add_argument('--replace-umlauts', help='replace umlauts in Swedish with double letter combinations (å->aa, ä->ae, ö->oe)', action='store_true')
     return parser
 
 
@@ -61,7 +62,7 @@ def filter_text(text):
     return False
 
 
-def normalize(text):
+def normalize(text, replace_umlauts):
     text = text.lower()
     text = text.replace("-", " ")
     text = text.replace("_", " ")
@@ -76,6 +77,10 @@ def normalize(text):
     text = text.replace("\\", "")
     text = text.replace("é", "e")
     text = text.replace("&", "och")
+    if (replace_umlauts):
+        text = text.replace("å", "aa")
+        text = text.replace("ä", "ae")
+        text = text.replace("ö", "oe")
     text = text.strip()
     return text
 
@@ -337,7 +342,7 @@ def filter_file_names(file_name):
     return False
 
 
-def fix_data(data_list):
+def fix_data(data_list, replace_umlauts):
     items_to_remove = []
     for i in range(len(data_list)):
         if (filter_text(data_list[i]['text'])):     # Filter out items with text that we don't want
@@ -353,7 +358,7 @@ def fix_data(data_list):
         data_list[i]['speaker_id'].replace('§', '')
         data_list[i]['speaker_id'].replace('¨', '')
 
-        data_list[i]['text'] = normalize(data_list[i]['text'])
+        data_list[i]['text'] = normalize(data_list[i]['text'], replace_umlauts)
     # Reverse the list to mitigate index out of bounds when removing items
     items_to_remove.reverse()
     for item in items_to_remove:
@@ -417,7 +422,7 @@ if __name__ == "__main__":
     data_list = _load_data(args.file)
 
     print("Fixing data")
-    fix_data(data_list)
+    fix_data(data_list, args.replace_umlauts)
 
     print("Finding unique speakers")
     speakers = find_speakers(data_list)
