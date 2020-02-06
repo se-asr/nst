@@ -1,13 +1,7 @@
 train/*
 test/*
-train.csv
-dev.csv
-test.csv
 __pycache__/
 
 all-train.csv
 all-test.csv
 
-test.csv
-train.csv
-dev.csv
