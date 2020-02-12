@@ -77,6 +77,7 @@ def normalize(text, replace_umlauts):
     text = text.replace("\\", " ")
     text = text.replace("é", "e")
     text = text.replace("&", "och")
+    text = text.replace("  ", " ")
     if (replace_umlauts):
         text = text.replace("å", "aa")
         text = text.replace("ä", "ae")
