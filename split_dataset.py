@@ -74,7 +74,7 @@ def normalize(text, replace_umlauts):
     text = text.replace("!", "")
     text = text.replace(":", "")
     text = text.replace("\"", "")
-    text = text.replace("\\", "")
+    text = text.replace("\\", " ")
     text = text.replace("é", "e")
     text = text.replace("&", "och")
     if (replace_umlauts):
@@ -124,7 +124,7 @@ def distribute_speakers(speakers, train_size, dev_size, seed):
         train.extend(speakers_by_region[region][:no_train])
         dev.extend(speakers_by_region[region][no_train:no_train+no_dev])
         test.extend(speakers_by_region[region][no_train+no_dev:])
-    
+
     return (train, dev, test)
 
 
@@ -232,7 +232,7 @@ def maxdiff(*stats):
 
 
 # Returns false if any of the locations has
-def check_locations(train_locations, dev_locations, test_locations, 
+def check_locations(train_locations, dev_locations, test_locations,
                     all_train_locations, total_rows, threshold):
     train_locations = location_partition(train_locations, total_rows['train'])
     dev_locations = location_partition(dev_locations, total_rows['dev'])
@@ -273,7 +273,7 @@ def check_gender(train_gender, dev_gender, test_gender, threshold):
     print("\nGender difference in absolute percents")
     print("Threshold: {}".format(threshold))
     print("train: {}\ndev: {}\ntest: {}\n".format(train_diff, dev_diff, test_diff))
-    
+
     return maxdiff(train_diff, dev_diff, test_diff) < threshold
 
 
@@ -334,6 +334,9 @@ def filter_file_names(file_name):
         lambda x: x == './train/Stasjon3/280799/adb_0467/speech/scr0467/03/04670303/r4670265/u0265070.wav',
         lambda x: x == './train/Stasjon6/060799/adb_0467/speech/scr0467/06/04670605/r4670479/u0479151.wav',
         lambda x: x == './train/Stasjon5/220799/adb_0467/speech/scr0467/05/04670505/r4670441/u0441079.wav',
+        lambda x: x == './train/Stasjon7/100799/adb_0467/speech/scr0467/07/04670706/r4670580/u0580189.wav',
+        lambda x: x == './train/Stasjon7/210799/adb_0467/speech/scr0467/07/04670707/r4670619/u0619087.wav',
+        lambda x: x == './train/Stasjon20/191099/adb_0467_2/speech/scr0467/20/04672001/r4670086/u0086079.wav',
         lambda x: x == './train/Stasjon7/160799/adb_0467/speech/scr0467/07/04670706/r4670598/u0598102.wav'
     ]
     for func in filter_functions:
