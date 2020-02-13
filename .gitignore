@@ -5,7 +5,3 @@ __pycache__/
 all-train.csv
 all-test.csv
 
-train.csv
-dev.csv
-train-int.csv
-dev-int.csv
