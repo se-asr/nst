@@ -6,6 +6,17 @@ import argparse
 DEFAULT_SEED = 1337
 
 
+BAD_SOUND_FILES = [
+    './train/Stasjon3/280799/adb_0467/speech/scr0467/03/04670303/r4670265/u0265070.wav',
+    './train/Stasjon6/060799/adb_0467/speech/scr0467/06/04670605/r4670479/u0479151.wav',
+    './train/Stasjon5/220799/adb_0467/speech/scr0467/05/04670505/r4670441/u0441079.wav',
+    './train/Stasjon7/100799/adb_0467/speech/scr0467/07/04670706/r4670580/u0580189.wav',
+    './train/Stasjon7/210799/adb_0467/speech/scr0467/07/04670707/r4670619/u0619087.wav',
+    './train/Stasjon20/191099/adb_0467_2/speech/scr0467/20/04672001/r4670086/u0086079.wav',
+    './train/Stasjon7/160799/adb_0467/speech/scr0467/07/04670706/r4670598/u0598102.wav',
+    './train/Stasjon7/100899/adb_0467/speech/scr0467/07/04670707/r4670672/u0672205.wav'
+]
+
 def load_arg_parser():
     parser = argparse.ArgumentParser(description='Split input data file in \
                                                   three sets')
@@ -331,19 +342,7 @@ def get_stats(dataset, metrics, integer_metrics):
 
 
 def filter_file_names(file_name):
-    filter_functions = [
-        lambda x: x == './train/Stasjon3/280799/adb_0467/speech/scr0467/03/04670303/r4670265/u0265070.wav',
-        lambda x: x == './train/Stasjon6/060799/adb_0467/speech/scr0467/06/04670605/r4670479/u0479151.wav',
-        lambda x: x == './train/Stasjon5/220799/adb_0467/speech/scr0467/05/04670505/r4670441/u0441079.wav',
-        lambda x: x == './train/Stasjon7/100799/adb_0467/speech/scr0467/07/04670706/r4670580/u0580189.wav',
-        lambda x: x == './train/Stasjon7/210799/adb_0467/speech/scr0467/07/04670707/r4670619/u0619087.wav',
-        lambda x: x == './train/Stasjon20/191099/adb_0467_2/speech/scr0467/20/04672001/r4670086/u0086079.wav',
-        lambda x: x == './train/Stasjon7/160799/adb_0467/speech/scr0467/07/04670706/r4670598/u0598102.wav'
-    ]
-    for func in filter_functions:
-        if (func(file_name)):
-            return True
-    return False
+    return file_name in BAD_SOUND_FILES
 
 
 def fix_data(data_list, replace_umlauts):
