@@ -216,13 +216,13 @@ def check_balance(train, dev, test, data_list, split):
         return False
 
     print("### Checking duration")
-    res = check_duration(train_stats['duration'], dev_stats['duration'], test_stats['duration'], split, 5)
+    res = check_duration(train_stats['duration'], dev_stats['duration'], test_stats['duration'], split, 0.05)
     print_result("Duration", res)
     if (not res):
         return False
 
     print("### Checking gender")
-    res = check_gender(train_stats['sex'], dev_stats['sex'], test_stats['sex'], 5)
+    res = check_gender(train_stats['sex'], dev_stats['sex'], test_stats['sex'], 0.05)
     print_result("Gender", res)
     if (not res):
         return False
