@@ -14,7 +14,9 @@ BAD_SOUND_FILES = [
     './train/Stasjon7/210799/adb_0467/speech/scr0467/07/04670707/r4670619/u0619087.wav',
     './train/Stasjon20/191099/adb_0467_2/speech/scr0467/20/04672001/r4670086/u0086079.wav',
     './train/Stasjon7/160799/adb_0467/speech/scr0467/07/04670706/r4670598/u0598102.wav',
-    './train/Stasjon7/100899/adb_0467/speech/scr0467/07/04670707/r4670672/u0672205.wav'
+    './train/Stasjon7/100899/adb_0467/speech/scr0467/07/04670707/r4670672/u0672205.wav',
+    './train/Stasjon2/120799/adb_0467/speech/scr0467/02/04670202/r4670123/u0123069.wav',
+    './train/Stasjon6/270799/adb_0467/speech/scr0467/06/04670606/r4670536/u0536161.wav'
 ]
 
 def load_arg_parser():
