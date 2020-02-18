@@ -38,6 +38,7 @@ optional arguments:
                         have already set aside a test set
   --replace-umlauts     replace umlauts in Swedish with double letter
                         combinations (å->aa, ä->ae, ö->oe)
+  --stats-only          don't save splits into files, just display statistics
 ```
 
 Split dataset uses the `all-train.csv` file created by `process_spl.py` to create 3 new files (train.csv, dev.csv, test.csv). This is done according to the split supplied to the `--split` flag.

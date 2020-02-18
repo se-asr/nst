@@ -28,6 +28,7 @@ def load_arg_parser():
     parser.add_argument('--out-prefix', type=str, help='prefix for out files (default: <empty string>, produces train.csv dev.csv test.csv)', default='')
     parser.add_argument('--no-test', help='merge dev and test sets to one file, useful if you have already set aside a test set', action='store_true')
     parser.add_argument('--replace-umlauts', help='replace umlauts in Swedish with double letter combinations (å->aa, ä->ae, ö->oe)', action='store_true')
+    parser.add_argument('--stats-only', help='don\'t save splits into files, just display statistics', action='store_true')
     return parser
 
 
@@ -442,6 +443,8 @@ if __name__ == "__main__":
                 break
             seed = random.randint(1, 1000000)
 
+    if (args.stats_only):
+        sys.exit(0)
     with open("{}train.csv".format(args.out_prefix), "w") as train_file:
         train_file.write('wav_filename,wav_filesize,transcript\n')
         for item in train:
