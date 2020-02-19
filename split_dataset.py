@@ -2,9 +2,13 @@ import sys
 import random
 import re
 import argparse
+import os
+from collections import Counter
 
-DEFAULT_SEED = 1337
-
+DEFAULT_SEED = int(os.environ.get('DEFAULT_SEED', 1337))
+TH_GENDER = float(os.environ.get('TH_GENDER', 0.001))
+TH_DURATION = float(os.environ.get('TH_DURATION', 0.001))
+TH_REGION = float(os.environ.get('TH_REGION', 0.1))
 
 BAD_SOUND_FILES = [
     './train/Stasjon3/280799/adb_0467/speech/scr0467/03/04670303/r4670265/u0265070.wav',
@@ -19,18 +23,18 @@ BAD_SOUND_FILES = [
     './train/Stasjon6/270799/adb_0467/speech/scr0467/06/04670606/r4670536/u0536161.wav'
 ]
 
+
 def load_arg_parser():
     parser = argparse.ArgumentParser(description='Split input data file in \
                                                   three sets')
     parser.add_argument('--seed', dest='seed', type=int, help='applies seed to random split, use to achieve same results as earlier run')
-    parser.add_argument('--split', dest='split', nargs='+', type=int, help='split sizes to use [train, dev, test] (default: 0.6 0.2 0.2)', default=[60, 20, 20])
+    parser.add_argument('--split', dest='split', nargs='+', type=float, help='split sizes to use [train, dev, test] (default: 0.6 0.2 0.2)', default=[0.6, 0.2, 0.2])
     parser.add_argument('--file', type=str, help='path of input file (default: all-train.csv)', default='all-train.csv')
     parser.add_argument('--out-prefix', type=str, help='prefix for out files (default: <empty string>, produces train.csv dev.csv test.csv)', default='')
     parser.add_argument('--no-test', help='merge dev and test sets to one file, useful if you have already set aside a test set', action='store_true')
     parser.add_argument('--replace-umlauts', help='replace umlauts in Swedish with double letter combinations (å->aa, ä->ae, ö->oe)', action='store_true')
     parser.add_argument('--stats-only', help='don\'t save splits into files, just display statistics', action='store_true')
     return parser
-
 
 def load_train():
     return _load_data('all-train.csv')
@@ -100,368 +104,304 @@ def normalize(text, replace_umlauts):
     return text
 
 
-def find_speakers(data_list):
-    speakers = []
-    speaker_ids = []
-    data = data_list.copy()
+def fix_data(data_list, replace_umlauts):
+    new_data = []
 
-    for item in data:
-        speaker_item = item.copy()
+    for data in data_list:
+        if data['duration'] >= 10.0:
+            continue
+        if data['speaker_id'].strip() == '':
+            continue
+        if filter_text(data['text']):
+            continue
+        if data['wav_file_name'] in BAD_SOUND_FILES:
+            continue
 
-        if (speaker_item['speaker_id'] not in speaker_ids):
-            del speaker_item['text']
-            del speaker_item['wav_file_name']
-            del speaker_item['duration']
-            del speaker_item['file_size']
-            speakers.append(speaker_item)
-            speaker_ids.append(speaker_item['speaker_id'])
-    return speakers
+        data['speaker_id'] =  data['speaker_id'].strip().replace('#', '')
+        data['speaker_id'] =  data['speaker_id'].strip().replace('§', '')
+        data['speaker_id'] =  data['speaker_id'].strip().replace('¨', '')
+
+        data['text'] = normalize(data['text'], replace_umlauts)
+        new_data.append(data)
+
+    return new_data
 
 
-def distribute_speakers(speakers, train_size, dev_size, seed):
-    speakers_by_region = dict()
-    for speaker in speakers:
-        region = speaker['region_of_youth']
-        if region not in speakers_by_region.keys():
+def build_speaker_stats(data_list):
+    stats = {}
+    for data in data_list:
+        speaker = data['speaker_id']
+        speaker_stats = stats[speaker] if speaker in stats else {'duration': 0.0, 'file_size': 0, 'rows': 0}
+        speaker_stats['age']                = data['age']
+        speaker_stats['sex']                = data['sex']
+        speaker_stats['region_of_youth']    = data['region_of_youth']
+        speaker_stats['duration']          += data['duration']
+        speaker_stats['file_size']         += data['file_size']
+        speaker_stats['rows']              += 1
+        stats[speaker] = speaker_stats
+    return stats
+
+
+def distribute_speakers(speaker_stats, split, seed):
+    random.seed(seed)
+
+    speakers_by_region = {}
+    for speaker, stats in speaker_stats.items():
+        region = stats['region_of_youth']
+        if region not in speakers_by_region:
             speakers_by_region[region] = []
         speakers_by_region[region].append(speaker)
 
     train = []
     dev = []
-    test =  []
-    random.seed(seed)
-    for region in speakers_by_region:
-        no_train = int(len(speakers_by_region[region]) * train_size)
-        no_dev = int(len(speakers_by_region[region]) * dev_size)
+    test = None
+    if len(split) == 3:
+        test = []
 
-        random.shuffle(speakers_by_region[region])
+    for region, speakers in speakers_by_region.items():
+        total_count = len(speakers)
+        train_count = int(total_count * split['train'])
+        dev_count = int(total_count * split['dev']) if test else total_count - train_count
 
-        train.extend(speakers_by_region[region][:no_train])
-        dev.extend(speakers_by_region[region][no_train:no_train+no_dev])
-        test.extend(speakers_by_region[region][no_train+no_dev:])
+        random.shuffle(speakers)
 
-    return (train, dev, test)
+        train.extend(speakers[:train_count])
+        dev.extend(speakers[train_count:train_count+dev_count])
+        if test:
+            test.extend(speakers[train_count+dev_count:])
 
-
-# Distributes items of the "all-train" file according to the speaker
-# distribution
-def distribute_items(speakers_ids_train, speakers_ids_dev,
-                     speakers_ids_test, data_list):
-    train = []
-    dev = []
-    test = []
-    trcount = dcount = tcount = 0
-    for item in data_list:
-        if item['speaker_id'] in speakers_ids_train:
-            train.append(item)
-            trcount += 1
-        elif item['speaker_id'] in speakers_ids_dev:
-            dev.append(item)
-            dcount += 1
-        elif item['speaker_id'] in speakers_ids_test:
-            test.append(item)
-            tcount += 1
-    print(trcount, dcount, tcount)
-    return (train, dev, test)
-
-
-# Returns a string given an item
-# Item can be either dict or something castable to string
-def item_to_str(item):
-    if (isinstance(item, dict)):
-        item_str = ""
-        for key in item.keys():
-            item_str += str(item[key])
-        return item_str
-    else:
-        return str(item)
-
-
-def check_distinctness(train, dev, test):
-    exists = set()
-    for item in train:
-        exists.add(item_to_str(item))
-    for item in dev:
-        if item_to_str(item) in exists:
-            print("Duplicate item!")
-            print(item)
-            return False
-        else:
-            exists.add(item_to_str(item))
-    for item in test:
-        if item_to_str(item) in exists:
-            print("Duplicate item!")
-            print(item)
-            return False
-    return True
-
-
-# Checks if the datasets are balanced according to some metrics
-def check_balance(train, dev, test, data_list, split):
-    metrics = ['age', 'sex', 'region_of_youth']     #Metrics with multiple values
-    integer_metrics = ['duration', 'file_size']     #Metrics with single value
-
-    train_stats = get_stats(train, metrics, integer_metrics)
-    dev_stats = get_stats(dev, metrics, integer_metrics)
-    test_stats = get_stats(test, metrics, integer_metrics)
-    all_train_stats = get_stats(data_list, metrics, integer_metrics)
-
-    total_rows = {
-        'train': len(train),
-        'dev': len(dev),
-        'test': len(test)
-    }
-
-    print("### Checking region of youth")
-    res = check_locations(train_stats['region_of_youth'], dev_stats['region_of_youth'], test_stats['region_of_youth'], all_train_stats['region_of_youth'], total_rows, 0.20)
-    print_result("Region of youth", res)
-    if (not res):
-        return False
-
-    print("### Checking duration")
-    res = check_duration(train_stats['duration'], dev_stats['duration'], test_stats['duration'], split, 0.05)
-    print_result("Duration", res)
-    if (not res):
-        return False
-
-    print("### Checking gender")
-    res = check_gender(train_stats['sex'], dev_stats['sex'], test_stats['sex'], 0.05)
-    print_result("Gender", res)
-    if (not res):
-        return False
-
-    return True
-
-
-def print_result(metric, res):
-    if res:
-        print("### {}: ✓".format(metric))
-    else:
-        print("### {}: ✖".format(metric))
-    print("\n")
-
+    return train, dev, test
 
 # Returns the largest difference between the items provided
 def maxdiff(*stats):
+    stats = [stat for stat in stats if stat]
     return max(stats) - min(stats)
 
 
-# Returns false if any of the locations has
-def check_locations(train_locations, dev_locations, test_locations,
-                    all_train_locations, total_rows, threshold):
-    train_locations = location_partition(train_locations, total_rows['train'])
-    dev_locations = location_partition(dev_locations, total_rows['dev'])
-    test_locations = location_partition(test_locations, total_rows['test'])
-    all_train_locations = location_partition(all_train_locations,
-                                             total_rows['train'] +
-                                             total_rows['dev'] +
-                                             total_rows['test'])
-
-    success = True
-    for location in all_train_locations:
-        if maxdiff(train_locations[location]/all_train_locations[location],
-                   dev_locations[location]/all_train_locations[location],
-                   test_locations[location]/all_train_locations[location]
-                   ) > threshold:
-            print("{} is unbalanced".format(location))
-            print(train_locations[location]/all_train_locations[location],
-                  dev_locations[location]/all_train_locations[location],
-                  test_locations[location]/all_train_locations[location])
-            success = False
-    return success
+# Like max(), but ignores None
+def max_v2(data):
+    return max([ val for val in data if val ])
 
 
-# Returns how big part of the dataset is from each location
-def location_partition(location_stats, total_rows):
-    stats = location_stats.copy()
-    for location in stats:
-        stats[location] = stats[location]/total_rows
-    return stats
+def check_balance(speaker_stats, train, dev, test, split, verbose=False, early_exit=False):
+    balanced = True
+    def get_stats(data):
+        ages = {}
+        sexes = {}
+        regions = {}
+        duration = 0.0
+        file_size = 0
+        # Scale stats with how many rows/transcripts each speaker represent
+        for d in data:
+            duration += d['duration']
+            file_size += d['file_size']
+            rows = d['rows']
+            age = d['age']
+            ages[age] = ages[age] + rows if age in ages else rows
+            sex = d['sex']
+            sexes[sex] = sexes[sex] + rows if sex in sexes else rows
+            region = d['region_of_youth']
+            regions[region] = regions[region] + rows if region in regions else rows
+        return {
+            'age':              ages,
+            'sex':              sexes,
+            'region_of_youth':  regions,
+            'duration':         duration,
+            'file_size':        file_size
+        }
+
+    if verbose:
+        print("Calcluating stats...")
+    all_stats = get_stats([ stat for _, stat in speaker_stats.items() ])
+    train_stats = get_stats([ stat for speaker, stat in speaker_stats.items() if speaker in train ])
+    dev_stats = get_stats([ stat for speaker, stat in speaker_stats.items() if speaker in dev ])
+    test_stats = None
+    if test:
+        test_stats = get_stats([ stat for speaker, stat in speaker_stats.items() if speaker in test ])
+
+    if verbose:
+        print("Checking gender balance, threshold: {}".format(TH_GENDER))
+
+    def gender_difference(stats):
+        male = stats['Male'] / (stats['Male'] + stats['Female'])
+        female = stats['Female'] / (stats['Male'] + stats['Female'])
+        return abs(male - female)
+
+    total_gender_diff = gender_difference(all_stats['sex'])
+    train_gender_diff = abs(gender_difference(train_stats['sex']) - total_gender_diff)
+    dev_gender_diff = abs(gender_difference(dev_stats['sex']) - total_gender_diff)
+    test_gender_diff = abs(gender_difference(test_stats['sex']) - total_gender_diff) if test else None
+
+    if max_v2([train_gender_diff, dev_gender_diff, test_gender_diff]) >= TH_GENDER:
+        if verbose:
+            print("Failed gender check\ntrain: {}\ndev:   {}\ntest:  {}\n".format(train_gender_diff, dev_gender_diff, test_gender_diff))
+        balanced = False
+        if early_exit:
+            return balanced
+    elif verbose:
+        print("Gender SUCCESS\ntrain: {}\ndev:   {}\ntest:  {}\n".format(train_gender_diff, dev_gender_diff, test_gender_diff))
+
+    if verbose:
+        print("Checking duration balance, threshold: {}".format(TH_DURATION))
+
+    train_duration = train_stats['duration']
+    dev_duration = dev_stats['duration']
+    test_duration = test_stats['duration'] if test else 0.0
+    total_duration = train_duration + dev_duration + test_duration
+
+    train_duration_diff = abs(train_duration/total_duration - split['train'])
+    dev_duration_diff = abs(dev_duration/total_duration - split['dev'])
+    test_duration_diff = abs(test_duration/total_duration - split['test']) if test else None
+    if max_v2([train_duration_diff, dev_duration_diff, test_duration_diff]) >= TH_DURATION:
+        if verbose:
+            print("Failed duration check\ntrain: {} ({:.2f}h)\ndev:   {} ({:.2f}h)\ntest:  {} ({:.2f}h)\n".format(train_duration_diff, train_duration/60.0/60.0, dev_duration_diff, dev_duration/60.0/60.0, test_duration_diff, test_duration/60.0/60.0))
+        balanced = False
+        if early_exit:
+            return balanced
+    elif verbose:
+        print("Duration SUCCESS\ntrain: {} ({:.2f}h)\ndev:   {} ({:.2f}h)\ntest:  {} ({:.2f}h)\n".format(train_duration_diff, train_duration/60.0/60.0, dev_duration_diff, dev_duration/60.0/60.0, test_duration_diff, test_duration/60.0/60.0))
+
+    if verbose:
+        print("Checking region of youth balance, threshold: {}".format(TH_REGION))
 
 
-# Returns false if the difference in gender distribution is greater
-# than the threshold
-def check_gender(train_gender, dev_gender, test_gender, threshold):
-    train_diff = gender_difference(train_gender)
-    dev_diff = gender_difference(dev_gender)
-    test_diff = gender_difference(test_gender)
-    print("\nGender difference in absolute percents")
-    print("Threshold: {}".format(threshold))
-    print("train: {}\ndev: {}\ntest: {}\n".format(train_diff, dev_diff, test_diff))
+    train_region_count = sum([ count for _, count in train_stats['region_of_youth'].items() ])
+    dev_region_count = sum([ count for _, count in dev_stats['region_of_youth'].items() ])
+    test_region_count = None
+    if test:
+        test_region_count = sum([ count for _, count in test_stats['region_of_youth'].items() ])
+    total_region_count = train_region_count + dev_region_count
+    if test:
+        total_region_count += test_region_count
 
-    return maxdiff(train_diff, dev_diff, test_diff) < threshold
+    for location, count in all_stats['region_of_youth'].items():
+        train_part = train_stats['region_of_youth'][location]/train_region_count
+        dev_part = dev_stats['region_of_youth'][location]/dev_region_count
+        test_part = test_stats['region_of_youth'][location]/test_region_count if test else None
+        train_diff = train_part / (all_stats['region_of_youth'][location]/total_region_count)
+        dev_diff = dev_part / (all_stats['region_of_youth'][location]/total_region_count)
+        test_diff = test_part / (all_stats['region_of_youth'][location]/total_region_count) if test else None
+        if maxdiff(train_diff, dev_diff, test_diff) >= TH_REGION:
+            if verbose:
+                print("{} is unbalanced: ({}, {}, {})".format(location, train_diff, dev_diff, test_diff))
+            balanced = False
+    if not balanced:
+        if verbose:
+            print("Failed region of youth check\n")
+        if early_exit:
+            return balanced
+    elif verbose:
+        print("Region SUCCESS\n")
 
-
-# Returns the difference between genders in a split
-def gender_difference(gender_stats):
-    male = gender_stats['Male'] / (gender_stats['Male'] + gender_stats['Female'])
-    female = gender_stats['Female'] / (gender_stats['Male'] + gender_stats['Female'])
-    return abs(male - female)
-
-
-def check_duration(train_duration, dev_duration, test_duration, split,
-                   threshold):
-    total_duration = (train_duration + dev_duration + test_duration)
-    train_duration = train_duration/total_duration
-    dev_duration = dev_duration/total_duration
-    test_duration = test_duration/total_duration
-    print("\nDuration difference in absolute percents")
-    print("Threshold: {}".format(threshold))
-    print("train: {}\ndev: {}\ntest: {}\n".format(train_duration, dev_duration, test_duration))
-    return (abs(train_duration - split['train']) < threshold and
-            abs(dev_duration - split['dev']) < threshold and
-            abs(test_duration - split['test']) < threshold)
+    return balanced
 
 
-# Calculates the average age of a dataset
-def average_age(ages_dict):
-    total = 0
-    number_of_persons = 0
-    for age in ages_dict.keys():
-        try:
-            total += int(age) * ages_dict[age]
-            number_of_persons += ages_dict[age]
-        except:
-            continue
-    return total/number_of_persons
+def do_split(speaker_stats, split, seed, verbose=False):
+    print("*" * 80)
+    print("Doing split using seed: {}".format(seed))
+    if verbose:
+        print("Distributing speakers in train, dev, and test sets")
+    train, dev, test = distribute_speakers(speaker_stats, split, seed)
+
+    if verbose:
+        print("Checking if speaker stats are balanced")
+
+    balanced = check_balance(speaker_stats, train, dev, test, split, verbose=verbose)
+
+    return balanced, (train, dev, test)
 
 
-def get_stats(dataset, metrics, integer_metrics):
-    stats = dict()
-    for stat in metrics:
-        stats[stat] = dict()
-    for stat in integer_metrics:
-        stats[stat] = 0
-    for item in dataset:
-        for metric in metrics:
-            try:
-                stats[metric][item[metric]] += 1
-            except:
-                stats[metric][item[metric]] = 1
+def collect_data(data_list, partition):
+    train, dev, test = partition
+    d_train = []
+    d_dev = []
+    d_test = [] if test else None
 
-        for metric in integer_metrics:
-            stats[metric] += item[metric]
-    return stats
+    for item in data_list:
+        speaker_id = item['speaker_id']
+        if speaker_id in train:
+            d_train.append(item)
+        elif speaker_id in dev:
+            d_dev.append(item)
+        elif speaker_id in test and test:
+            d_test.append(item)
 
-
-def filter_file_names(file_name):
-    return file_name in BAD_SOUND_FILES
-
-
-def fix_data(data_list, replace_umlauts):
-    items_to_remove = []
-    for i in range(len(data_list)):
-        if (filter_text(data_list[i]['text'])):     # Filter out items with text that we don't want
-            items_to_remove.append(i)
-        if (data_list[i]['duration'] >= 10.0):      # Deepspeech cant handle clips 10 seconds and longer
-            items_to_remove.append(i)
-        if (data_list[i]['speaker_id'] == ''):
-            items_to_remove.append(i)
-        if (filter_file_names(data_list[i]['wav_file_name'])):
-            items_to_remove.append(i)
-
-        data_list[i]['speaker_id'].replace('#', '')
-        data_list[i]['speaker_id'].replace('§', '')
-        data_list[i]['speaker_id'].replace('¨', '')
-
-        data_list[i]['text'] = normalize(data_list[i]['text'], replace_umlauts)
-    # Reverse the list to mitigate index out of bounds when removing items
-    items_to_remove.reverse()
-    for item in items_to_remove:
-        del data_list[item]
+    count_train = len(d_train)
+    count_dev = len(d_dev)
+    count_test = len(d_test) if test else 0
+    if count_train + count_dev + count_test != len(data_list):
+        print("Counts don't add up...")
+        sys.exit(1)
+    print(count_train, count_dev, count_test)
+    return d_train, d_dev, d_test
 
 
-def format_item(item):
-    item_str = ""
-    item_str += item['wav_file_name']
-    item_str += ","
-    item_str += str(int(item['file_size']))
-    item_str += ","
-    item_str += item['text']
-    item_str += "\n"
-    return item_str
+def format_data_for_csv(data):
+    file_name = data['wav_file_name']
+    file_size = int(data['file_size'])
+    text = data['text']
+    return "{},{},{}\n".format(file_name, file_size, text)
 
 
-def iteration(speakers, split, seed):
-    success = True
-    print("seed is: ", seed)
-    print("Distributing speakers in train, dev and test sets")
-    train_speakers, dev_speakers, test_speakers = distribute_speakers(speakers, split['train'], split['dev'], seed)
+def save_splits(train, dev, test, prefix=''):
+    HEADER = 'wav_filename,wav_filesize,transcript\n'
+    def write_csv(file_name, data):
+        with open(file_name, 'w') as f:
+            f.write(HEADER)
+            for d in data:
+                f.write(format_data_for_csv(d))
+    write_csv("{}train.csv".format(prefix), train)
+    write_csv("{}dev.csv".format(prefix), dev)
+    if test:
+        write_csv("{}test.csv".format(prefix), test)
 
-    print("Checking speaker distinctness")
-    success &= check_distinctness(train_speakers, dev_speakers, test_speakers)
 
-    train_ids = [item['speaker_id'] for item in train_speakers]
-    dev_ids = [item['speaker_id'] for item in dev_speakers]
-    test_ids = [item['speaker_id'] for item in test_speakers]
+def main(args):
+    if abs(sum(args.split) - 1.0) > 0.000001: # Floating point error check
+        print("Sum of split percentages must be 1 (100%)")
+        sys.exit(1)
 
-    print("Distributing items according to speaker distribution")
-    train, dev, test = distribute_items(
-        train_ids, dev_ids, test_ids, data_list
-    )
+    splits = {
+        'train': args.split[0],
+        'dev': args.split[1],
+        'test': None
+    }
 
-    print("Checking balance")
-    success &= check_balance(train, dev, test, data_list, split)
+    if not args.no_test:
+        if len(args.split) < 3:
+            print("Test set wanted, but only two splits parameters given")
+            sys.exit(1)
+        splits['test'] = args.split[2]
 
-    print("Checking distinctness")
-    success &= check_distinctness(train, dev, test)
+    print("Loading data from file {}".format(args.file))
+    all_data = _load_data(args.file)
 
-    return success, train, dev, test
+    print("Fixing data")
+    all_data = fix_data(all_data, args.replace_umlauts)
+
+    print("Building speaker stats cache")
+    speaker_stats = build_speaker_stats(all_data)
+
+    if args.seed:
+        print("Doing a single split using seed: {}".format(args.seed))
+        balanced, partition = do_split(speaker_stats, splits, args.seed, verbose=True)
+    else:
+        seed = DEFAULT_SEED
+        print("Starting search for a good split, starting with seed: {}".format(seed))
+        balanced = False
+        while not balanced:
+            balanced, partition = do_split(speaker_stats, splits, seed, verbose=True)
+            if not balanced:
+                seed = random.randint(1, 9999999)
+        print("\n\nSplit successful using seed: {}".format(seed))
+
+    if args.stats_only:
+        sys.exit(0)
+
+    train, dev, test = collect_data(all_data, partition)
+    save_splits(train, dev, test, prefix=args.out_prefix)
 
 
 if __name__ == "__main__":
     args_parser = load_arg_parser()
-
-    args = args_parser.parse_args(sys.argv[1:])
-    print(args)
-    if (sum(args.split)!=100):
-        print("Sum of split must be 100")
-        exit(0)
-
-    split = {
-        'train': args.split[0]/100,
-        'dev': args.split[1]/100,
-        'test': args.split[2]/100
-    }
-
-    print("Loading data from file {}".format(args.file))
-    data_list = _load_data(args.file)
-
-    print("Fixing data")
-    fix_data(data_list, args.replace_umlauts)
-
-    print("Finding unique speakers")
-    speakers = find_speakers(data_list)
-
-    if (args.seed):
-        res, train, dev, test = iteration(speakers, split, args.seed)
-    else:
-        seed = DEFAULT_SEED
-        while True:
-            res, train, dev, test = iteration(speakers, split, seed)
-            if res:
-                break
-            seed = random.randint(1, 1000000)
-
-    if (args.stats_only):
-        sys.exit(0)
-    with open("{}train.csv".format(args.out_prefix), "w") as train_file:
-        train_file.write('wav_filename,wav_filesize,transcript\n')
-        for item in train:
-            train_file.write(format_item(item))
-
-    if (args.no_test):
-        with open("{}dev.csv".format(args.out_prefix), "w") as dev_file:
-            dev_file.write('wav_filename,wav_filesize,transcript\n')
-            for item in dev+test:
-                dev_file.write(format_item(item))
-    else:
-        with open("{}dev.csv".format(args.out_prefix), "w") as dev_file:
-            dev_file.write('wav_filename,wav_filesize,transcript\n')
-            for item in dev:
-                dev_file.write(format_item(item))
-
-        with open("{}test.csv".format(args.out_prefix), "w") as test_file:
-            test_file.write('wav_filename,wav_filesize,transcript\n')
-            for item in test:
-                test_file.write(format_item(item))
+    main(args_parser.parse_args(sys.argv[1:]))
