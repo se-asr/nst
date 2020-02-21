@@ -1,6 +1,7 @@
 import csv
 import sys
-from util import normalize, filter_text
+from util import normalize
+
 
 if __name__ == "__main__":
     rows = []
@@ -12,4 +13,5 @@ if __name__ == "__main__":
     with open(sys.argv[1], "w") as input_file:
         writer = csv.writer(input_file)
         for row in rows:
-            writer.writerow([row[0], row[1], normalize(row[2], False)])
+            row[0] = "./" + row[0][:-4] + ".wav"
+            writer.writerow([row[0], row[1], normalize(row[2])])
