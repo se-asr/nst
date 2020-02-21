@@ -34,6 +34,7 @@ def load_arg_parser():
     parser.add_argument('--no-test', help='merge dev and test sets to one file, useful if you have already set aside a test set', action='store_true')
     parser.add_argument('--replace-umlauts', help='replace umlauts in Swedish with double letter combinations (å->aa, ä->ae, ö->oe)', action='store_true')
     parser.add_argument('--stats-only', help='don\'t save splits into files, just display statistics', action='store_true')
+    parser.add_argument('--any-split', help='set all thresholds to 1', action='store_true')
     return parser
 
 def load_train():
@@ -357,6 +358,15 @@ def save_splits(train, dev, test, prefix=''):
 
 
 def main(args):
+    if args.any_split:
+        print('Allowing any split')
+        global TH_GENDER
+        TH_GENDER = 1.0
+        global TH_DURATION
+        TH_DURATION = 1.0
+        global TH_REGION
+        TH_REGION = 1.0
+
     if abs(sum(args.split) - 1.0) > 0.000001: # Floating point error check
         print("Sum of split percentages must be 1 (100%)")
         sys.exit(1)
