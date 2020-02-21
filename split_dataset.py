@@ -1,9 +1,9 @@
 import sys
 import random
-import re
 import argparse
 import os
 from collections import Counter
+from util import normalize, filter_text
 
 DEFAULT_SEED = int(os.environ.get('DEFAULT_SEED', 1337))
 TH_GENDER = float(os.environ.get('TH_GENDER', 0.001))
@@ -79,30 +79,6 @@ def filter_text(text):
         if (func(text)):
             return True
     return False
-
-
-def normalize(text, replace_umlauts):
-    text = text.lower()
-    text = text.replace("-", " ")
-    text = text.replace("_", " ")
-    text = re.sub("[ ]{2,}", " ", text)
-    text = text.replace(".", "")
-    text = text.replace(",", "")
-    text = text.replace(";", "")
-    text = text.replace("?", "")
-    text = text.replace("!", "")
-    text = text.replace(":", "")
-    text = text.replace("\"", "")
-    text = text.replace("\\", " ")
-    text = text.replace("é", "e")
-    text = text.replace("&", "och")
-    text = text.replace("  ", " ")
-    if (replace_umlauts):
-        text = text.replace("å", "aa")
-        text = text.replace("ä", "ae")
-        text = text.replace("ö", "oe")
-    text = text.strip()
-    return text
 
 
 def fix_data(data_list, replace_umlauts):
