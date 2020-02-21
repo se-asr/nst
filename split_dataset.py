@@ -161,13 +161,13 @@ def distribute_speakers(speaker_stats, split, seed):
     for region, speakers in speakers_by_region.items():
         total_count = len(speakers)
         train_count = int(total_count * split['train'])
-        dev_count = int(total_count * split['dev']) if test else total_count - train_count
+        dev_count = int(total_count * split['dev']) if test != None else total_count - train_count
 
         random.shuffle(speakers)
 
         train.extend(speakers[:train_count])
         dev.extend(speakers[train_count:train_count+dev_count])
-        if test:
+        if test != None:
             test.extend(speakers[train_count+dev_count:])
 
     return train, dev, test
