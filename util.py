@@ -1,5 +1,6 @@
 import re
-
+import tempfile
+from number_to_word import to_words
 
 units = {
     'mm': 'millimeter',
@@ -60,11 +61,11 @@ def normalize(text):
         match = match.group()
         word = match
         try:
-            word = toWords(match)
+            word = to_words(match)
         except ValueError as ex:
             print('Failed to convert "{}": {}'.format(match, ex))
         return word
     text = re_numbers.sub(number_to_word, text)
-    text = re_spaces.sub(' ', text)
     text = re_replace_all.sub('', text)
+    text = re_spaces.sub(' ', text)
     return text.strip()
