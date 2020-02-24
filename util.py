@@ -37,6 +37,7 @@ TMP_DIR = tempfile.mkdtemp()
 def normalize(text):
     text = text.lower()
     text = re_remove_silent_date.sub('', text)
+    text = text.replace('|', '')
     text = text.replace('"', '')
     text = text.replace('.', '')
     text = text.replace('(', '')
