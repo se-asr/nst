@@ -1,5 +1,6 @@
 train/*
 test/*
+/speech
 __pycache__/
 
 all-train.csv
@@ -11,3 +12,4 @@ all-test.csv
 /train-int.csv
 /dev-int.csv
 /test-int.csv
+/train-tts.csv
