@@ -15,4 +15,6 @@ if __name__ == "__main__":
         for row in rows:
             if (row[0].endswith(".mp3")):
                 row[0] = "./" + row[0][:-4] + ".wav"
-            writer.writerow([row[0], row[1], normalize(row[2])])
+            normalized = normalize(row[2])
+            if normalized.strip() != '':
+                writer.writerow([row[0], row[1], normalized])
