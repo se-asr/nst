@@ -1,7 +1,10 @@
+import os
 import csv
 import sys
+import subprocess
 from util import normalize
 
+DEV_NULL = open(os.devnull, 'w')
 
 if __name__ == "__main__":
     rows = []
@@ -15,6 +18,8 @@ if __name__ == "__main__":
         for row in rows:
             if (row[0].endswith(".mp3")):
                 row[0] = "./" + row[0][:-4] + ".wav"
-            normalized = normalize(row[2])
-            if normalized.strip() != '':
-                writer.writerow([row[0], row[1], normalized])
+            duration_in_seconds = float(subprocess.check_output(['soxi', '-D', row[0]], stderr=DEV_NULL))
+            if duration_in_seconds < 10.0:
+                normalized = normalize(row[2])
+                if normalized.strip() != '':
+                    writer.writerow([row[0], row[1], normalized])
