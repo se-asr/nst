@@ -3,7 +3,7 @@ import random
 import argparse
 import os
 from collections import Counter
-from util import normalize, filter_text
+from util import normalize
 
 DEFAULT_SEED = int(os.environ.get('DEFAULT_SEED', 1337))
 TH_GENDER = float(os.environ.get('TH_GENDER', 0.001))
