@@ -32,7 +32,6 @@ def load_arg_parser():
     parser.add_argument('--file', type=str, help='path of input file (default: all-train.csv)', default='all-train.csv')
     parser.add_argument('--out-prefix', type=str, help='prefix for out files (default: <empty string>, produces train.csv dev.csv test.csv)', default='')
     parser.add_argument('--no-test', help='merge dev and test sets to one file, useful if you have already set aside a test set', action='store_true')
-    parser.add_argument('--replace-umlauts', help='replace umlauts in Swedish with double letter combinations (å->aa, ä->ae, ö->oe)', action='store_true')
     parser.add_argument('--stats-only', help='don\'t save splits into files, just display statistics', action='store_true')
     parser.add_argument('--any-split', help='set all thresholds to 1', action='store_true')
     return parser
@@ -81,7 +80,7 @@ def filter_text(text):
     return False
 
 
-def fix_data(data_list, replace_umlauts):
+def fix_data(data_list):
     new_data = []
 
     for data in data_list:
@@ -98,7 +97,7 @@ def fix_data(data_list, replace_umlauts):
         data['speaker_id'] =  data['speaker_id'].strip().replace('§', '')
         data['speaker_id'] =  data['speaker_id'].strip().replace('¨', '')
 
-        data['text'] = normalize(data['text'], replace_umlauts)
+        data['text'] = normalize(data['text'], is_nst=True)
         new_data.append(data)
 
     return new_data
@@ -363,7 +362,7 @@ def main(args):
     all_data = _load_data(args.file)
 
     print("Fixing data")
-    all_data = fix_data(all_data, args.replace_umlauts)
+    all_data = fix_data(all_data)
 
     print("Building speaker stats cache")
     speaker_stats = build_speaker_stats(all_data)

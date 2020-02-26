@@ -34,7 +34,7 @@ re_replace_all = re.compile(r"[^a-z|å|ä|ö|\s]")
 TMP_DIR = tempfile.mkdtemp()
 
 
-def normalize(text):
+def normalize(text, is_nst=False):
     text = text.lower()
     text = re_remove_silent_date.sub('', text)
     text = text.replace('|', '')
@@ -48,14 +48,15 @@ def normalize(text):
     text = text.replace("\\", " ")
     text = text.replace("é", "e")
     text = text.replace("&", "och")
-    for key, pattern in re_units.items():
-        replacement = r"{0}\1".format(re.escape(units[key]))
-        text = pattern.sub(replacement, text)
-    text = re_square.sub(r"kvadrat\1", text)
-    text = re_cubic.sub(r"kubik\1", text)
-    text = re_combine_digits.sub(r"\1\3", text)
-    text = re_sep_decimals.sub(r"\1 komma \2", text)
-    text = re_digit_range.sub(r"\1 till \2", text)
+    if not is_nst:
+        for key, pattern in re_units.items():
+            replacement = r"{0}\1".format(re.escape(units[key]))
+            text = pattern.sub(replacement, text)
+        text = re_square.sub(r"kvadrat\1", text)
+        text = re_cubic.sub(r"kubik\1", text)
+        text = re_combine_digits.sub(r"\1\3", text)
+        text = re_sep_decimals.sub(r"\1 komma \2", text)
+        text = re_digit_range.sub(r"\1 till \2", text)
     text = text.replace('-', ' ')
     text = text.replace('%', 'procent')
     def number_to_word(match):
