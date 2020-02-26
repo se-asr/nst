@@ -33,12 +33,12 @@ def convert_dataset(file_name):
         f.readline() # Skip header row
         for line in f:
             wav_file_name = line.split(",", 1)[0]
-            success = convert_to_mono(file_name, overwrite=True)
+            success = convert_to_mono(wav_file_name, overwrite=True)
             if not success:
                 print("Failed to convert {}".format(wav_file_name))
                 failed += 1
                 continue
-            success = confirm_is_mono(file_name)
+            success = confirm_is_mono(wav_file_name)
             if not success:
                 print("Not mono: {}".format(wav_file_name))
                 not_mono += 1
