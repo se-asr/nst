@@ -131,7 +131,7 @@ def distribute_speakers(speaker_stats, split, seed):
     train = []
     dev = []
     test = None
-    if len(split) == 3:
+    if len(split) == 3 and split['test'] != None:
         test = []
 
     for region, speakers in speakers_by_region.items():
