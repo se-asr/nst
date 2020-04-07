@@ -34,6 +34,7 @@ def load_arg_parser():
     parser.add_argument('--no-test', help='merge dev and test sets to one file, useful if you have already set aside a test set', action='store_true')
     parser.add_argument('--stats-only', help='don\'t save splits into files, just display statistics', action='store_true')
     parser.add_argument('--any-split', help='set all thresholds to 1', action='store_true')
+    parser.add_argument('--skip-region', help='do not check region of youth', action='store_true')
     return parser
 
 def load_train():
@@ -159,7 +160,7 @@ def max_v2(data):
     return max([ val for val in data if val ])
 
 
-def check_balance(speaker_stats, train, dev, test, split, verbose=False, early_exit=False):
+def check_balance(speaker_stats, train, dev, test, split, skip_region, verbose=False, early_exit=False):
     balanced = True
     def get_stats(data):
         ages = {}
@@ -237,6 +238,8 @@ def check_balance(speaker_stats, train, dev, test, split, verbose=False, early_e
     elif verbose:
         print("Duration SUCCESS\ntrain: {} ({:.2f}h)\ndev:   {} ({:.2f}h)\ntest:  {} ({:.2f}h)\n".format(train_duration_diff, train_duration/60.0/60.0, dev_duration_diff, dev_duration/60.0/60.0, test_duration_diff, test_duration/60.0/60.0))
 
+    if skip_region:
+        return balanced
     if verbose:
         print("Checking region of youth balance, threshold: {}".format(TH_REGION))
 
@@ -272,7 +275,7 @@ def check_balance(speaker_stats, train, dev, test, split, verbose=False, early_e
     return balanced
 
 
-def do_split(speaker_stats, split, seed, verbose=False):
+def do_split(speaker_stats, split, seed, skip_region, verbose=False):
     print("*" * 80)
     print("Doing split using seed: {}".format(seed))
     if verbose:
@@ -282,7 +285,7 @@ def do_split(speaker_stats, split, seed, verbose=False):
     if verbose:
         print("Checking if speaker stats are balanced")
 
-    balanced = check_balance(speaker_stats, train, dev, test, split, verbose=verbose)
+    balanced = check_balance(speaker_stats, train, dev, test, split, skip_region, verbose=verbose)
 
     return balanced, (train, dev, test)
 
@@ -369,13 +372,13 @@ def main(args):
 
     if args.seed:
         print("Doing a single split using seed: {}".format(args.seed))
-        balanced, partition = do_split(speaker_stats, splits, args.seed, verbose=True)
+        balanced, partition = do_split(speaker_stats, splits, args.seed, args.skip_region, verbose=True)
     else:
         seed = DEFAULT_SEED
         print("Starting search for a good split, starting with seed: {}".format(seed))
         balanced = False
         while not balanced:
-            balanced, partition = do_split(speaker_stats, splits, seed, verbose=True)
+            balanced, partition = do_split(speaker_stats, splits, seed, args.skip_region, verbose=True)
             if not balanced:
                 seed = random.randint(1, 9999999)
         print("\n\nSplit successful using seed: {}".format(seed))
