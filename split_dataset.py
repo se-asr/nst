@@ -20,7 +20,10 @@ BAD_SOUND_FILES = [
     './train/Stasjon7/160799/adb_0467/speech/scr0467/07/04670706/r4670598/u0598102.wav',
     './train/Stasjon7/100899/adb_0467/speech/scr0467/07/04670707/r4670672/u0672205.wav',
     './train/Stasjon2/120799/adb_0467/speech/scr0467/02/04670202/r4670123/u0123069.wav',
-    './train/Stasjon6/270799/adb_0467/speech/scr0467/06/04670606/r4670536/u0536161.wav'
+    './train/Stasjon6/270799/adb_0467/speech/scr0467/06/04670606/r4670536/u0536161.wav',
+    './test/Stasjon20/191299/adb_0468/speech/scr0468/20/04682001/r4680013/u0013872.wav',
+    './test/Stasjon20/110100_del2/adb_0468/speech/scr0468/20/04682001/r4680023/u0023342.wav'
+
 ]
 
 
