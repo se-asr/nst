@@ -37,6 +37,7 @@ def load_arg_parser():
     parser.add_argument('--skip-region', help='do not check region of youth', action='store_true')
     parser.add_argument('--skip-gender', help='do not check gender', action='store_true')
     parser.add_argument('--skip-speaker', help='do not check speaker ID', action='store_true')
+    parser.add_argument('--any-duration', help='allow any duration of sound clips', action='store_true')
     return parser
 
 def load_train():
@@ -83,11 +84,11 @@ def filter_text(text):
     return False
 
 
-def fix_data(data_list, skip_speaker_id=False):
+def fix_data(data_list, skip_speaker_id=False, any_duration=False):
     new_data = []
 
     for i, data in enumerate(data_list):
-        if data['duration'] >= 10.0:
+        if not any_duration and data['duration'] >= 10.0:
             continue
         if data['speaker_id'].strip() == '':
             continue
@@ -371,7 +372,7 @@ def main(args):
     all_data = _load_data(args.file)
 
     print("Fixing data")
-    all_data = fix_data(all_data, skip_speaker_id=args.skip_speaker)
+    all_data = fix_data(all_data, skip_speaker_id=args.skip_speaker, any_duration=args.any_duration)
 
     print("Building speaker stats cache")
     speaker_stats = build_speaker_stats(all_data)
