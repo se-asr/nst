@@ -1,6 +1,6 @@
 import re
 import tempfile
-from number_to_word import to_words
+from .number_to_word import to_words
 
 units = {
     'mm': 'millimeter',
@@ -34,7 +34,7 @@ re_replace_all = re.compile(r"[^a-z|å|ä|ö|\s]")
 TMP_DIR = tempfile.mkdtemp()
 
 
-def normalize(text, is_nst=False):
+def normalize(text, is_nst=False, remove_spaces_between_digits=True):
     text = text.lower()
     text = re_remove_silent_date.sub('', text)
     text = text.replace('|', '')
@@ -48,13 +48,15 @@ def normalize(text, is_nst=False):
     text = text.replace("\\", " ")
     text = text.replace("é", "e")
     text = text.replace("&", "och")
+    text = text.replace(u'\xa0', ' ')
     if not is_nst:
         for key, pattern in re_units.items():
             replacement = r"{0}\1".format(re.escape(units[key]))
             text = pattern.sub(replacement, text)
         text = re_square.sub(r"kvadrat\1", text)
         text = re_cubic.sub(r"kubik\1", text)
-        text = re_combine_digits.sub(r"\1\3", text)
+        if remove_spaces_between_digits:
+            text = re_combine_digits.sub(r"\1\3", text)
         text = re_sep_decimals.sub(r"\1 komma \2", text)
         text = re_digit_range.sub(r"\1 till \2", text)
     text = text.replace('-', ' ')
@@ -71,3 +73,27 @@ def normalize(text, is_nst=False):
     text = re_replace_all.sub('', text)
     text = re_spaces.sub(' ', text)
     return text.strip()
+
+
+def load_processed_train():
+    return load_processed("train.csv")
+
+def load_processed_dev():
+    return load_processed("dev.csv")
+
+def load_processed_test():
+    return load_processed("real-test-2.csv")
+
+def load_processed(filename):
+    data = []
+    with open(filename, "r") as f:
+        f.readline()
+        for line in f:
+            row = line.split(",")
+            item = {
+                "wav_file_name": row[0].strip(),
+                "file_size": row[1].strip(),
+                "text": " ".join(row[2:]).strip()
+            }
+            data.append(item)
+    return data

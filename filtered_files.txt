@@ -1,0 +1,18 @@
+./train/Stasjon7/100799/adb_0467/speech/scr0467/07/04670706/r4670580/u0580189.wav, 1.0, två  två  åtta  fyra  tjugosex  sexhundrafyrtiofyra
+./train/Stasjon7/100899/adb_0467/speech/scr0467/07/04670707/r4670672/u0672205.wav, 0.75, Och då måste allting vara lögn.\Punkt
+./train/Stasjon7/210799/adb_0467/speech/scr0467/07/04670707/r4670619/u0619087.wav, 1.75, Styrelseskicken diktatoriska under avståndstagande från franska revolutionens idéer.
+./train/Stasjon7/160799/adb_0467/speech/scr0467/07/04670706/r4670598/u0598102.wav, 2.5, Bemannade stridsflygplan ersätts av precisionsvapen med lång räckvidd,  vilka drar en bråkdel av bemannade flygplans kostnader.
+./train/Stasjon3/210799/adb_0467/speech/scr0467/03/04670303/r4670249/u0249117.wav, 4.0, Blanda ner potatis,  crème fraîche och grädde.
+./train/Stasjon3/120799/adb_0467/speech/scr0467/03/04670303/r4670225/u0225002.wav, 3.75, Testar en två tre fyra fem sex sju åtta.
+./train/Stasjon1/020899/adb_0467/speech/scr0467/01/04670101/r4670077/u0077089.wav, 5.0, Müsli och torkad frukt är också skadligt för tänderna.
+./train/Stasjon1/020899/adb_0467/speech/scr0467/01/04670101/r4670076/u0076121.wav, 6.5, Jag undrar om det är något soÿm jag direkt känner mig stolt över.
+./train/Stasjon2/120799/adb_0467/speech/scr0467/02/04670202/r4670123/u0123069.wav, 1.0, Ett stort polisuppbåd kallades till platsen.
+./train/Stasjon5/220799/adb_0467/speech/scr0467/05/04670505/r4670441/u0441079.wav, 1.0, ett  två  tre  fem  trettiotre  sjuhundratrettiofyra
+./train/Stasjon6/290799/adb_0467/speech/scr0467/06/04670606/r4670544/u0544107.wav, 5.5, M ü L L E R
+./train/Stasjon6/190799/adb_0467/speech/scr0467/06/04670606/r4670519/u0519118.wav, 6.5, Strö över hackad persilja och servera grytan med senap och en klick crème fraiche.
+./train/Stasjon6/270799/adb_0467/speech/scr0467/06/04670606/r4670536/u0536161.wav, 1.75, Juryn fick först prova mat som stekts i oljan och sedan oljan naturell på sallad.
+./train/Stasjon20/191099/adb_0467_2/speech/scr0467/20/04672001/r4670086/u0086079.wav, 1.0, åtta  två  två  ett  tolv  tvåhundrafemtioett
+./test/Stasjon20/160100/adb_0468/speech/scr0468/20/04682001/r4680028/u0028784.wav, 2.5, Zürich
+./test/Stasjon20/060100/adb_0468/speech/scr0468/20/04682001/r4680019/u0019397.wav, 2.0, Zürich
+./test/Stasjon20/110100_del2/adb_0468/speech/scr0468/20/04682001/r4680023/u0023342.wav, 0.75, trettiosex tusen femhundrasextioåtta
+./test/Stasjon20/191299/adb_0468/speech/scr0468/20/04682001/r4680013/u0013872.wav, 0.0, U T F R Å G N I N G
